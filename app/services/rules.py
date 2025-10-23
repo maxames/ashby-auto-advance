@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from structlog import get_logger
@@ -134,6 +135,10 @@ async def evaluate_rule_requirements(
     - Compare against threshold using operator
     - All interviewers must pass for interview to pass
 
+    Note: If an interview is scheduled multiple times (e.g., multiple panel rounds),
+    ALL events must have feedback from ALL assigned interviewers before the requirement
+    passes. This ensures complete evaluation across all instances of the interview.
+
     Args:
         rule_id: Rule UUID
         schedule_id: Schedule UUID
@@ -243,6 +248,8 @@ async def evaluate_rule_requirements(
             continue
 
         # Interview is scheduled - check all events for this interview
+        # Note: If interview is scheduled multiple times, we require feedback
+        # from all interviewers across ALL events
         interview_passed = True
         interviewer_results: list[dict[str, Any]] = []
 
@@ -269,6 +276,9 @@ async def evaluate_rule_requirements(
             # Check each interviewer's score
             for feedback in event_feedback:
                 submitted_values = feedback["submitted_values"]
+                # Parse JSON if it's a string (from database)
+                if isinstance(submitted_values, str):
+                    submitted_values = json.loads(submitted_values)
                 score_value = submitted_values.get(score_field)
 
                 if score_value is None:

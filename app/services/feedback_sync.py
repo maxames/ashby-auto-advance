@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from structlog import get_logger
 
 from app.clients.ashby import fetch_application_feedback
@@ -55,12 +57,23 @@ async def sync_feedback_for_application(application_id: str) -> int:
                 submission["submittedByUserId"],
                 submission["interviewId"],
                 submission["submittedAt"],
-                submission["submittedValues"],
+                json.dumps(submission["submittedValues"]),
             )
 
             # Check if row was inserted (result will be "INSERT 0 1" for new row)
             if "INSERT 0 1" in result:
                 new_count += 1
+
+        # Update schedule's updated_at to trigger re-evaluation
+        if new_count > 0:
+            await db.execute(
+                """
+                UPDATE interview_schedules s
+                SET updated_at = NOW()
+                WHERE s.application_id = $1
+                """,
+                application_id,
+            )
 
         logger.info(
             "feedback_synced_for_application",

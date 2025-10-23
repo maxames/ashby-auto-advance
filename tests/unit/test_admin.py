@@ -1,6 +1,6 @@
 """Unit tests for admin service."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -63,20 +63,20 @@ class TestCreateAdvancementRule:
         async with clean_db.acquire() as conn:
             rule = await conn.fetchrow(
                 "SELECT * FROM advancement_rules WHERE rule_id = $1",
-                uuid4(result["rule_id"]),
+                UUID(result["rule_id"]),
             )
             assert rule is not None
             assert rule["is_active"] is True
 
             req_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM advancement_rule_requirements WHERE rule_id = $1",
-                uuid4(result["rule_id"]),
+                UUID(result["rule_id"]),
             )
             assert req_count == 1
 
             action_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM advancement_rule_actions WHERE rule_id = $1",
-                uuid4(result["rule_id"]),
+                UUID(result["rule_id"]),
             )
             assert action_count == 1
 
@@ -151,9 +151,9 @@ class TestGetAdvancementStatistics:
                 (schedule_id, application_id, rule_id, execution_status, executed_at)
                 VALUES ($1, $2, $3, 'success', NOW())
                 """,
-                uuid4(schedule1["schedule_id"]),
-                uuid4(schedule1["application_id"]),
-                uuid4(rule1["rule_id"]),
+                UUID(schedule1["schedule_id"]),
+                UUID(schedule1["application_id"]),
+                UUID(rule1["rule_id"]),
             )
 
             await conn.execute(
@@ -163,9 +163,9 @@ class TestGetAdvancementStatistics:
                  failure_reason, executed_at)
                 VALUES ($1, $2, $3, 'failed', 'Test error', NOW())
                 """,
-                uuid4(schedule2["schedule_id"]),
-                uuid4(schedule2["application_id"]),
-                uuid4(rule2["rule_id"]),
+                UUID(schedule2["schedule_id"]),
+                UUID(schedule2["application_id"]),
+                UUID(rule2["rule_id"]),
             )
 
         stats = await get_advancement_statistics()
@@ -231,7 +231,7 @@ class TestGetSchedulesForApplication:
         async with clean_db.acquire() as conn:
             await conn.execute(
                 "UPDATE interview_schedules SET updated_at = NOW() + INTERVAL '1 hour' WHERE schedule_id = $1",
-                uuid4(schedule1["schedule_id"]),
+                UUID(schedule1["schedule_id"]),
             )
 
         schedules = await get_schedules_for_application(application_id)

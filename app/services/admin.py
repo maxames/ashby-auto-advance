@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
@@ -82,7 +83,11 @@ async def create_advancement_rule(
         """,
             rule_id,
             action["action_type"],
-            action.get("action_config"),
+            (
+                json.dumps(action.get("action_config"))
+                if action.get("action_config")
+                else None
+            ),
             action.get("execution_order", 1),
         )
         action_ids.append(str(action_id))
@@ -196,12 +201,12 @@ async def get_schedules_for_application(application_id: str) -> list[dict[str, A
     """
     schedules = await db.fetch(
         """
-        SELECT schedule_id, status, interview_stage_id, updated_at, created_at
+        SELECT schedule_id, application_id, status, interview_stage_id, updated_at
         FROM interview_schedules
         WHERE application_id = $1
         ORDER BY updated_at DESC
     """,
-        application_id,
+        UUID(application_id),
     )
 
     logger.info(
@@ -213,12 +218,12 @@ async def get_schedules_for_application(application_id: str) -> list[dict[str, A
     return [
         {
             "schedule_id": str(s["schedule_id"]),
+            "application_id": str(s["application_id"]),
             "status": s["status"],
             "interview_stage_id": (
                 str(s["interview_stage_id"]) if s["interview_stage_id"] else None
             ),
             "updated_at": s["updated_at"].isoformat() if s["updated_at"] else None,
-            "created_at": s["created_at"].isoformat() if s["created_at"] else None,
         }
         for s in schedules
     ]

@@ -1,7 +1,7 @@
 """Integration tests for feedback sync."""
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -26,6 +26,17 @@ class TestFeedbackSyncIntegration:
         schedule = await create_test_schedule(clean_db, application_id=application_id)
 
         async with clean_db.acquire() as conn:
+            # Insert parent interview record first
+            await conn.execute(
+                """
+                INSERT INTO interviews (interview_id, title, job_id, feedback_form_definition_id)
+                VALUES ($1, 'Test Interview', $2, $3)
+                """,
+                interview_id,
+                schedule["job_id"],
+                str(uuid4()),
+            )
+
             await conn.execute(
                 """
                 INSERT INTO interview_events
@@ -34,9 +45,9 @@ class TestFeedbackSyncIntegration:
                 VALUES ($1, $2, $3, NOW(), NOW(), NOW(), NOW() + INTERVAL '1 hour',
                         'https://ashby.com/feedback', false, '{}')
                 """,
-                uuid4(event_id),
-                uuid4(schedule["schedule_id"]),
-                uuid4(interview_id),
+                event_id,
+                schedule["schedule_id"],
+                interview_id,
             )
 
         # Mock Ashby API
@@ -69,10 +80,12 @@ class TestFeedbackSyncIntegration:
             },
         ]
 
-        from app.clients import ashby
+        from app.services import feedback_sync
 
         monkeypatch.setattr(
-            ashby, "fetch_application_feedback", AsyncMock(return_value=mock_feedback)
+            feedback_sync,
+            "fetch_application_feedback",
+            AsyncMock(return_value=mock_feedback),
         )
 
         # Sync
@@ -84,14 +97,19 @@ class TestFeedbackSyncIntegration:
         async with clean_db.acquire() as conn:
             feedback_records = await conn.fetch(
                 "SELECT * FROM feedback_submissions WHERE application_id = $1 ORDER BY submitted_at",
-                uuid4(application_id),
+                application_id,
             )
 
             assert len(feedback_records) == 2
 
-            # Check first feedback
+            # Check first feedback - parse submitted_values if it's a string
+            import json
+
+            submitted_values = feedback_records[0]["submitted_values"]
+            if isinstance(submitted_values, str):
+                submitted_values = json.loads(submitted_values)
             assert str(feedback_records[0]["interview_id"]) == interview_id
-            assert feedback_records[0]["submitted_values"]["overall_score"] == 4
+            assert submitted_values["overall_score"] == 4
             assert feedback_records[0]["processed_for_advancement_at"] is None
 
     @pytest.mark.asyncio
@@ -110,7 +128,7 @@ class TestFeedbackSyncIntegration:
         async with clean_db.acquire() as conn:
             interview_id = await conn.fetchval(
                 "SELECT interview_id FROM interview_events WHERE event_id = $1",
-                uuid4(event_id),
+                event_id,
             )
 
         mock_feedback = [
@@ -125,10 +143,12 @@ class TestFeedbackSyncIntegration:
             }
         ]
 
-        from app.clients import ashby
+        from app.services import feedback_sync
 
         monkeypatch.setattr(
-            ashby, "fetch_application_feedback", AsyncMock(return_value=mock_feedback)
+            feedback_sync,
+            "fetch_application_feedback",
+            AsyncMock(return_value=mock_feedback),
         )
 
         # Sync
@@ -138,7 +158,7 @@ class TestFeedbackSyncIntegration:
         async with clean_db.acquire() as conn:
             feedback = await conn.fetchrow(
                 "SELECT * FROM feedback_submissions WHERE feedback_id = $1",
-                uuid4(feedback_id),
+                feedback_id,
             )
 
             assert feedback is not None
@@ -149,8 +169,15 @@ class TestFeedbackSyncIntegration:
                 str(feedback["interviewer_id"])
                 == sample_interview_event["interviewer_id"]
             )
-            assert feedback["submitted_values"]["overall_score"] == 5
-            assert feedback["submitted_values"]["notes"] == "Excellent candidate"
+
+            # Parse submitted_values if it's a string
+            import json
+
+            submitted_values = feedback["submitted_values"]
+            if isinstance(submitted_values, str):
+                submitted_values = json.loads(submitted_values)
+            assert submitted_values["overall_score"] == 5
+            assert submitted_values["notes"] == "Excellent candidate"
             assert feedback["processed_for_advancement_at"] is None
             assert feedback["created_at"] is not None
 
@@ -167,6 +194,17 @@ class TestFeedbackSyncIntegration:
         schedule = await create_test_schedule(clean_db, application_id=application_id)
 
         async with clean_db.acquire() as conn:
+            # Insert parent interview record first
+            await conn.execute(
+                """
+                INSERT INTO interviews (interview_id, title, job_id, feedback_form_definition_id)
+                VALUES ($1, 'Test Interview', $2, $3)
+                """,
+                interview_id,
+                schedule["job_id"],
+                str(uuid4()),
+            )
+
             await conn.execute(
                 """
                 INSERT INTO interview_events
@@ -175,9 +213,9 @@ class TestFeedbackSyncIntegration:
                 VALUES ($1, $2, $3, NOW(), NOW(), NOW(), NOW() + INTERVAL '1 hour',
                         'https://ashby.com/feedback', false, '{}')
                 """,
-                uuid4(event_id),
-                uuid4(schedule["schedule_id"]),
-                uuid4(interview_id),
+                event_id,
+                schedule["schedule_id"],
+                interview_id,
             )
 
         # Mock API with multiple feedback items
@@ -195,10 +233,12 @@ class TestFeedbackSyncIntegration:
             for i in range(1, 6)  # 5 feedback submissions
         ]
 
-        from app.clients import ashby
+        from app.services import feedback_sync
 
         monkeypatch.setattr(
-            ashby, "fetch_application_feedback", AsyncMock(return_value=mock_feedback)
+            feedback_sync,
+            "fetch_application_feedback",
+            AsyncMock(return_value=mock_feedback),
         )
 
         # Sync
@@ -210,6 +250,6 @@ class TestFeedbackSyncIntegration:
         async with clean_db.acquire() as conn:
             feedback_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM feedback_submissions WHERE application_id = $1",
-                uuid4(application_id),
+                application_id,
             )
             assert feedback_count == 5

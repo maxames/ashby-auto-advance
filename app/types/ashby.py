@@ -34,6 +34,7 @@ class CandidateTD(TypedDict):
     name: str
     emailAddresses: NotRequired[list[EmailAddressTD]]
     primaryEmailAddress: NotRequired[EmailAddressTD]
+    primaryPhoneNumber: NotRequired[dict[str, str]]
     resumeFileHandle: NotRequired[FileHandleTD]
     socialLinks: NotRequired[list[SocialLinkTD]]
     profileUrl: NotRequired[str]

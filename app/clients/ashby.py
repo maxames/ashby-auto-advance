@@ -125,6 +125,32 @@ async def fetch_candidate_info(candidate_id: str) -> CandidateTD:
     return cast(CandidateTD, data)
 
 
+async def fetch_job_info(job_id: str) -> JobInfoTD:
+    """
+    Fetch job details from Ashby API.
+
+    Args:
+        job_id: Ashby job UUID
+
+    Returns:
+        Job data (typed)
+
+    Raises:
+        Exception: If API call fails
+    """
+    response = await ashby_client.post("job.info", {"id": job_id})
+
+    if not response["success"]:
+        raise Exception(f"Failed to fetch job info: {response.get('error')}")
+
+    data = response["results"]
+
+    if "id" not in data or "title" not in data:
+        raise ValueError(f"Invalid job payload for {job_id}")
+
+    return cast(JobInfoTD, data)
+
+
 async def fetch_resume_url(file_handle: str) -> str | None:
     """
     Convert Ashby file handle to actual S3 URL.
@@ -136,7 +162,7 @@ async def fetch_resume_url(file_handle: str) -> str | None:
         S3 URL or None if fetch fails
     """
     try:
-        response = await ashby_client.post("file.info", {"handle": file_handle})
+        response = await ashby_client.post("file.info", {"fileHandle": file_handle})
 
         if response["success"]:
             return str(response["results"]["url"])

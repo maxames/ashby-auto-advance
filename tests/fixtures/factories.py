@@ -140,10 +140,10 @@ async def create_test_rule(
             VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
             """,
             rule_id,
-            UUID(job_id) if job_id else None,
-            UUID(interview_plan_id),
-            UUID(interview_stage_id),
-            UUID(target_stage_id) if target_stage_id else None,
+            job_id,
+            interview_plan_id,
+            interview_stage_id,
+            target_stage_id,
         )
 
         await conn.execute(
@@ -155,7 +155,7 @@ async def create_test_rule(
             """,
             requirement_id,
             rule_id,
-            UUID(interview_id),
+            interview_id,
             score_field,
             operator,
             threshold,
@@ -212,16 +212,15 @@ async def create_test_schedule(
             """
             INSERT INTO interview_schedules
             (schedule_id, application_id, interview_stage_id, interview_plan_id,
-             job_id, candidate_id, status, updated_at, created_at,
-             last_evaluated_for_advancement_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), NULL)
+             job_id, candidate_id, status, updated_at, last_evaluated_for_advancement_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NULL)
             """,
-            UUID(schedule_id),
-            UUID(application_id),
-            UUID(interview_stage_id),
-            UUID(interview_plan_id),
-            UUID(job_id) if job_id else None,
-            UUID(candidate_id),
+            schedule_id,
+            application_id,
+            interview_stage_id,
+            interview_plan_id,
+            job_id,
+            candidate_id,
             status,
         )
 
@@ -264,12 +263,24 @@ async def create_test_feedback(
             VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, NOW())
             """,
             feedback_id,
-            UUID(application_id),
-            UUID(event_id),
-            UUID(interviewer_id),
-            UUID(interview_id),
+            application_id,
+            event_id,
+            interviewer_id,
+            interview_id,
             submitted_at,
             json.dumps(submitted_values),
+        )
+
+        # Update schedule's updated_at to trigger re-evaluation (matches production behavior)
+        await conn.execute(
+            """
+            UPDATE interview_schedules s
+            SET updated_at = NOW()
+            FROM interview_events e
+            WHERE e.schedule_id = s.schedule_id
+              AND e.event_id = $1
+            """,
+            event_id,
         )
 
     return {

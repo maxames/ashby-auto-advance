@@ -1,6 +1,6 @@
 """Unit tests for rules evaluation engine."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -109,7 +109,7 @@ class TestFindMatchingRule:
         async with clean_db.acquire() as conn:
             await conn.execute(
                 "UPDATE advancement_rules SET is_active = false WHERE rule_id = $1",
-                uuid4(rule_data["rule_id"]),
+                rule_data["rule_id"],
             )
 
         # Should not find the inactive rule
@@ -148,9 +148,9 @@ class TestEvaluateRuleRequirements:
                 SET interview_plan_id = $1, interview_stage_id = $2
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
         # Create feedback that passes threshold
@@ -170,8 +170,8 @@ class TestEvaluateRuleRequirements:
             feedback_submissions=[
                 {
                     **feedback,
-                    "event_id": uuid4(feedback["event_id"]),
-                    "interview_id": uuid4(feedback["interview_id"]),
+                    "event_id": feedback["event_id"],
+                    "interview_id": feedback["interview_id"],
                 }
             ],
         )
@@ -242,7 +242,7 @@ class TestEvaluateRuleRequirements:
                 SET is_required = false
                 WHERE requirement_id = $1
                 """,
-                uuid4(rule_data["requirement_id"]),
+                rule_data["requirement_id"],
             )
 
         # Create schedule with no events
@@ -285,9 +285,9 @@ class TestEvaluateRuleRequirements:
                 SET interview_plan_id = $1, interview_stage_id = $2
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
             # Add second interviewer to same event
@@ -302,7 +302,7 @@ class TestEvaluateRuleRequirements:
                 VALUES ($1, $2, 'Second', 'Interviewer', 'second@example.com',
                         'Interviewer', 'Trained', true, $3, 'Pool', false, '{}', NOW())
                 """,
-                uuid4(sample_interview_event["event_id"]),
+                sample_interview_event["event_id"],
                 interviewer2_id,
                 uuid4(),
             )
@@ -324,8 +324,8 @@ class TestEvaluateRuleRequirements:
             feedback_submissions=[
                 {
                     **feedback,
-                    "event_id": uuid4(feedback["event_id"]),
-                    "interview_id": uuid4(feedback["interview_id"]),
+                    "event_id": feedback["event_id"],
+                    "interview_id": feedback["interview_id"],
                 }
             ],
         )
@@ -354,9 +354,9 @@ class TestEvaluateRuleRequirements:
                 SET interview_plan_id = $1, interview_stage_id = $2
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
         # Create feedback with score below threshold
@@ -376,8 +376,8 @@ class TestEvaluateRuleRequirements:
             feedback_submissions=[
                 {
                     **feedback,
-                    "event_id": uuid4(feedback["event_id"]),
-                    "interview_id": uuid4(feedback["interview_id"]),
+                    "event_id": feedback["event_id"],
+                    "interview_id": feedback["interview_id"],
                 }
             ],
         )
@@ -406,9 +406,9 @@ class TestEvaluateRuleRequirements:
                 SET interview_plan_id = $1, interview_stage_id = $2
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
         # Create feedback without the required field
@@ -428,8 +428,8 @@ class TestEvaluateRuleRequirements:
             feedback_submissions=[
                 {
                     **feedback,
-                    "event_id": uuid4(feedback["event_id"]),
-                    "interview_id": uuid4(feedback["interview_id"]),
+                    "event_id": feedback["event_id"],
+                    "interview_id": feedback["interview_id"],
                 }
             ],
         )
@@ -477,9 +477,9 @@ class TestEvaluateRuleRequirements:
                     SET interview_plan_id = $1, interview_stage_id = $2
                     WHERE schedule_id = $3
                     """,
-                    uuid4(rule_data["interview_plan_id"]),
-                    uuid4(rule_data["interview_stage_id"]),
-                    uuid4(schedule_id),
+                    rule_data["interview_plan_id"],
+                    rule_data["interview_stage_id"],
+                    schedule_id,
                 )
 
             # Create feedback
@@ -499,8 +499,8 @@ class TestEvaluateRuleRequirements:
                 feedback_submissions=[
                     {
                         **feedback,
-                        "event_id": uuid4(feedback["event_id"]),
-                        "interview_id": uuid4(feedback["interview_id"]),
+                        "event_id": feedback["event_id"],
+                        "interview_id": feedback["interview_id"],
                     }
                 ],
             )
@@ -546,7 +546,7 @@ class TestGetTargetStageForRule:
         async with clean_db.acquire() as conn:
             await conn.execute(
                 "UPDATE advancement_rules SET target_stage_id = NULL WHERE rule_id = $1",
-                uuid4(rule_data["rule_id"]),
+                rule_data["rule_id"],
             )
 
         # Mock list_interview_stages_for_plan to return sequential stages
@@ -558,10 +558,10 @@ class TestGetTargetStageForRule:
             {"id": next_stage_id, "orderInInterviewPlan": 2},
         ]
 
-        from app.clients import ashby
+        from app.services import rules
 
         monkeypatch.setattr(
-            ashby,
+            rules,
             "list_interview_stages_for_plan",
             AsyncMock(return_value=mock_stages),
         )
@@ -588,7 +588,7 @@ class TestGetTargetStageForRule:
         async with clean_db.acquire() as conn:
             await conn.execute(
                 "UPDATE advancement_rules SET target_stage_id = NULL WHERE rule_id = $1",
-                uuid4(rule_data["rule_id"]),
+                rule_data["rule_id"],
             )
 
         # Mock - current stage is last (no next stage)
@@ -597,10 +597,10 @@ class TestGetTargetStageForRule:
             {"id": current_stage_id, "orderInInterviewPlan": 3},
         ]
 
-        from app.clients import ashby
+        from app.services import rules
 
         monkeypatch.setattr(
-            ashby,
+            rules,
             "list_interview_stages_for_plan",
             AsyncMock(return_value=mock_stages),
         )

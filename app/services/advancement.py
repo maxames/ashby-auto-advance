@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 from structlog import get_logger
@@ -115,7 +116,7 @@ async def evaluate_schedule_for_advancement(schedule_id: str) -> dict[str, Any]:
     rule = await find_matching_rule(job_id, interview_plan_id, interview_stage_id)
 
     if not rule:
-        return {"ready": False, "blocking_reason": "no_matching_rule"}
+        return {"ready": False, "blocking_reason": "no_rule"}
 
     rule_id = rule["rule_id"]
 
@@ -162,7 +163,7 @@ async def evaluate_schedule_for_advancement(schedule_id: str) -> dict[str, Any]:
     if recent_feedback > 0:
         return {
             "ready": False,
-            "blocking_reason": f"feedback_too_recent_{min_wait_minutes}min_wait",
+            "blocking_reason": "too_recent",
         }
 
     # Evaluate rule requirements
@@ -260,7 +261,7 @@ async def execute_advancement(
             rule_id,
             from_stage_id,
             target_stage_id,
-            evaluation_results,
+            json.dumps(evaluation_results) if evaluation_results else None,
         )
 
         # Mark as evaluated
@@ -298,7 +299,7 @@ async def execute_advancement(
                 rule_id,
                 from_stage_id,
                 target_stage_id,
-                evaluation_results,
+                json.dumps(evaluation_results) if evaluation_results else None,
             )
 
             # Mark feedback as processed
@@ -367,7 +368,7 @@ async def execute_advancement(
                     from_stage_id,
                     target_stage_id,
                     failure_reason,
-                    evaluation_results,
+                    json.dumps(evaluation_results) if evaluation_results else None,
                 )
 
                 # Mark schedule as evaluated (prevents retry loop)
@@ -557,8 +558,21 @@ async def send_rejection_notification(
         # Build Ashby profile URL
         ashby_profile_url = f"https://app.ashbyhq.com/candidate-searches/new/right-side/candidates/{candidate_id}"
 
-        # Get job title (simplified - could fetch from API)
-        job_title = "Position"  # TODO: Fetch from job.info if needed
+        # Get job title from Ashby
+        job_title = "Position"  # Default fallback
+        if schedule["job_id"]:
+            try:
+                from app.clients.ashby import fetch_job_info
+
+                job_info = await fetch_job_info(str(schedule["job_id"]))
+                job_title = job_info["title"]
+            except Exception as e:
+                logger.warning(
+                    "failed_to_fetch_job_title",
+                    job_id=schedule["job_id"],
+                    error=str(e),
+                )
+                # Keep default "Position"
 
         # Build feedback summary
         feedback_summaries = []

@@ -1,7 +1,7 @@
 """Unit tests for advancement service."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -66,7 +66,7 @@ class TestGetSchedulesReadyForEvaluation:
                     updated_at = NOW()
                 WHERE schedule_id = $1
                 """,
-                uuid4(schedule2["schedule_id"]),
+                schedule2["schedule_id"],
             )
 
         # Schedule 3: Evaluated and NOT updated since
@@ -85,7 +85,7 @@ class TestGetSchedulesReadyForEvaluation:
                     updated_at = NOW() - INTERVAL '1 hour'
                 WHERE schedule_id = $1
                 """,
-                uuid4(schedule3["schedule_id"]),
+                schedule3["schedule_id"],
             )
 
         schedules = await get_schedules_ready_for_evaluation()
@@ -124,7 +124,7 @@ class TestGetSchedulesReadyForEvaluation:
                 SET updated_at = NOW() - INTERVAL '30 days'
                 WHERE schedule_id = $1
                 """,
-                uuid4(old_schedule["schedule_id"]),
+                old_schedule["schedule_id"],
             )
 
         schedules = await get_schedules_ready_for_evaluation()
@@ -158,9 +158,9 @@ class TestEvaluateScheduleForAdvancement:
                 SET interview_plan_id = $1, interview_stage_id = $2, status = 'Complete'
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
         # Create passing feedback (submitted > 30 mins ago)
@@ -209,9 +209,9 @@ class TestEvaluateScheduleForAdvancement:
                 SET interview_plan_id = $1, interview_stage_id = $2, status = 'Complete'
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
         # Create recent feedback (< 30 mins)
@@ -251,9 +251,9 @@ class TestEvaluateScheduleForAdvancement:
                 SET interview_plan_id = $1, interview_stage_id = $2, status = 'Complete'
                 WHERE schedule_id = $3
                 """,
-                uuid4(rule_data["interview_plan_id"]),
-                uuid4(rule_data["interview_stage_id"]),
-                uuid4(schedule_id),
+                rule_data["interview_plan_id"],
+                rule_data["interview_stage_id"],
+                schedule_id,
             )
 
         # Create feedback that fails threshold
@@ -309,7 +309,7 @@ class TestExecuteAdvancement:
         async with clean_db.acquire() as conn:
             execution = await conn.fetchrow(
                 "SELECT * FROM advancement_executions WHERE schedule_id = $1",
-                uuid4(schedule["schedule_id"]),
+                schedule["schedule_id"],
             )
             assert execution is not None
             assert execution["execution_status"] == "dry_run"
@@ -324,9 +324,9 @@ class TestExecuteAdvancement:
 
         # Mock API call
         mock_advance = AsyncMock(return_value={"id": schedule["application_id"]})
-        from app.clients import ashby
+        from app.services import advancement
 
-        monkeypatch.setattr(ashby, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
 
         # Execute
         result = await execute_advancement(
@@ -335,7 +335,7 @@ class TestExecuteAdvancement:
             rule_id=rule["rule_id"],
             target_stage_id=rule["target_stage_id"],
             from_stage_id=schedule["interview_stage_id"],
-            evaluation_results={},
+            evaluation_results=None,
             dry_run=False,
         )
 
@@ -345,7 +345,7 @@ class TestExecuteAdvancement:
         async with clean_db.acquire() as conn:
             execution = await conn.fetchrow(
                 "SELECT * FROM advancement_executions WHERE schedule_id = $1",
-                uuid4(schedule["schedule_id"]),
+                schedule["schedule_id"],
             )
             assert execution is not None
             assert execution["execution_status"] == "success"
@@ -361,9 +361,9 @@ class TestExecuteAdvancement:
 
         # Mock API to raise exception
         mock_advance = AsyncMock(side_effect=Exception("API Error"))
-        from app.clients import ashby
+        from app.services import advancement
 
-        monkeypatch.setattr(ashby, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
 
         # Execute - should handle error gracefully
         result = await execute_advancement(
@@ -382,7 +382,7 @@ class TestExecuteAdvancement:
         async with clean_db.acquire() as conn:
             execution = await conn.fetchrow(
                 "SELECT * FROM advancement_executions WHERE schedule_id = $1",
-                uuid4(schedule["schedule_id"]),
+                schedule["schedule_id"],
             )
             assert execution is not None
             assert execution["execution_status"] == "failed"
@@ -395,7 +395,9 @@ class TestExecuteAdvancement:
         """Test marks feedback as processed after advancement."""
         from unittest.mock import AsyncMock
 
-        schedule = await create_test_schedule(clean_db)
+        schedule = await create_test_schedule(
+            clean_db, application_id=sample_interview_event["application_id"]
+        )
         rule = await create_test_rule(clean_db)
 
         # Create feedback
@@ -410,16 +412,16 @@ class TestExecuteAdvancement:
 
         # Mock API
         mock_advance = AsyncMock(return_value={"id": schedule["application_id"]})
-        from app.clients import ashby
+        from app.services import advancement
 
-        monkeypatch.setattr(ashby, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
 
         # Link event to schedule
         async with clean_db.acquire() as conn:
             await conn.execute(
                 "UPDATE interview_events SET schedule_id = $1 WHERE event_id = $2",
-                uuid4(schedule["schedule_id"]),
-                uuid4(sample_interview_event["event_id"]),
+                schedule["schedule_id"],
+                sample_interview_event["event_id"],
             )
 
         # Execute
@@ -429,7 +431,7 @@ class TestExecuteAdvancement:
             rule_id=rule["rule_id"],
             target_stage_id=rule["target_stage_id"],
             from_stage_id=schedule["interview_stage_id"],
-            evaluation_results={},
+            evaluation_results=None,
             dry_run=False,
         )
 
@@ -437,7 +439,7 @@ class TestExecuteAdvancement:
         async with clean_db.acquire() as conn:
             feedback_record = await conn.fetchrow(
                 "SELECT * FROM feedback_submissions WHERE feedback_id = $1",
-                uuid4(feedback["feedback_id"]),
+                feedback["feedback_id"],
             )
             assert feedback_record is not None
             assert feedback_record["processed_for_advancement_at"] is not None
