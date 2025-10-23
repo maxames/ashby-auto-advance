@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     advancement_feedback_timeout_days: int = 7
     advancement_feedback_min_wait_minutes: int = 30
     admin_slack_channel_id: str | None = None
-    default_archive_reason_id: str
+    default_archive_reason_id: str | None = None
 
     class Config:
         """Pydantic configuration."""

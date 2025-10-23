@@ -1,6 +1,7 @@
 """Test fixtures and factories."""
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 
 def create_interview_event(
@@ -99,4 +100,183 @@ def create_ashby_webhook_payload(
                 ],
             }
         },
+    }
+
+
+async def create_test_rule(
+    db_pool,
+    interview_plan_id: str | None = None,
+    interview_stage_id: str | None = None,
+    interview_id: str | None = None,
+    target_stage_id: str | None = None,
+    job_id: str | None = None,
+    score_field: str = "overall_score",
+    operator: str = ">=",
+    threshold: str = "3",
+) -> dict:
+    """Insert an advancement rule into the database for testing."""
+    import json
+    from uuid import UUID
+
+    if interview_plan_id is None:
+        interview_plan_id = str(uuid4())
+    if interview_stage_id is None:
+        interview_stage_id = str(uuid4())
+    if interview_id is None:
+        interview_id = str(uuid4())
+    if target_stage_id is None:
+        target_stage_id = str(uuid4())
+
+    rule_id = uuid4()
+    requirement_id = uuid4()
+    action_id = uuid4()
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO advancement_rules
+            (rule_id, job_id, interview_plan_id, interview_stage_id,
+             target_stage_id, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+            """,
+            rule_id,
+            UUID(job_id) if job_id else None,
+            UUID(interview_plan_id),
+            UUID(interview_stage_id),
+            UUID(target_stage_id) if target_stage_id else None,
+        )
+
+        await conn.execute(
+            """
+            INSERT INTO advancement_rule_requirements
+            (requirement_id, rule_id, interview_id, score_field_path,
+             operator, threshold_value, is_required, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
+            """,
+            requirement_id,
+            rule_id,
+            UUID(interview_id),
+            score_field,
+            operator,
+            threshold,
+        )
+
+        await conn.execute(
+            """
+            INSERT INTO advancement_rule_actions
+            (action_id, rule_id, action_type, action_config, execution_order, created_at)
+            VALUES ($1, $2, $3, $4, 1, NOW())
+            """,
+            action_id,
+            rule_id,
+            "advance_stage",
+            json.dumps({}),
+        )
+
+    return {
+        "rule_id": str(rule_id),
+        "requirement_id": str(requirement_id),
+        "action_id": str(action_id),
+        "interview_plan_id": interview_plan_id,
+        "interview_stage_id": interview_stage_id,
+        "target_stage_id": target_stage_id,
+        "interview_id": interview_id,
+    }
+
+
+async def create_test_schedule(
+    db_pool,
+    schedule_id: str | None = None,
+    application_id: str | None = None,
+    interview_stage_id: str | None = None,
+    interview_plan_id: str | None = None,
+    job_id: str | None = None,
+    status: str = "Complete",
+) -> dict:
+    """Insert a schedule into the database for testing."""
+    from uuid import UUID
+
+    if schedule_id is None:
+        schedule_id = str(uuid4())
+    if application_id is None:
+        application_id = str(uuid4())
+    if interview_stage_id is None:
+        interview_stage_id = str(uuid4())
+    if interview_plan_id is None:
+        interview_plan_id = str(uuid4())
+
+    candidate_id = str(uuid4())
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO interview_schedules
+            (schedule_id, application_id, interview_stage_id, interview_plan_id,
+             job_id, candidate_id, status, updated_at, created_at,
+             last_evaluated_for_advancement_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), NULL)
+            """,
+            UUID(schedule_id),
+            UUID(application_id),
+            UUID(interview_stage_id),
+            UUID(interview_plan_id),
+            UUID(job_id) if job_id else None,
+            UUID(candidate_id),
+            status,
+        )
+
+    return {
+        "schedule_id": schedule_id,
+        "application_id": application_id,
+        "interview_stage_id": interview_stage_id,
+        "interview_plan_id": interview_plan_id,
+        "job_id": job_id,
+        "candidate_id": candidate_id,
+    }
+
+
+async def create_test_feedback(
+    db_pool,
+    event_id: str,
+    application_id: str,
+    interviewer_id: str,
+    interview_id: str,
+    submitted_values: dict | None = None,
+    submitted_at: datetime | None = None,
+) -> dict:
+    """Insert feedback submission into the database for testing."""
+    import json
+    from uuid import UUID
+
+    if submitted_values is None:
+        submitted_values = {"overall_score": 4}
+    if submitted_at is None:
+        submitted_at = datetime.now(UTC) - timedelta(hours=1)
+
+    feedback_id = uuid4()
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO feedback_submissions
+            (feedback_id, application_id, event_id, interviewer_id, interview_id,
+             submitted_at, submitted_values, processed_for_advancement_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, NOW())
+            """,
+            feedback_id,
+            UUID(application_id),
+            UUID(event_id),
+            UUID(interviewer_id),
+            UUID(interview_id),
+            submitted_at,
+            json.dumps(submitted_values),
+        )
+
+    return {
+        "feedback_id": str(feedback_id),
+        "event_id": event_id,
+        "application_id": application_id,
+        "interviewer_id": interviewer_id,
+        "interview_id": interview_id,
+        "submitted_values": submitted_values,
     }

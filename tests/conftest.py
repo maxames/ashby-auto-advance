@@ -47,11 +47,14 @@ async def clean_db(db_pool):
     """Clean database before each test."""
     async with db_pool.acquire() as conn:
         # Clear all tables in reverse dependency order
+        await conn.execute("DELETE FROM advancement_executions")
+        await conn.execute("DELETE FROM advancement_rule_actions")
+        await conn.execute("DELETE FROM advancement_rule_requirements")
+        await conn.execute("DELETE FROM advancement_rules")
+        await conn.execute("DELETE FROM feedback_submissions")
         await conn.execute("DELETE FROM interview_assignments")
         await conn.execute("DELETE FROM interview_events")
         await conn.execute("DELETE FROM interview_schedules")
-        await conn.execute("DELETE FROM feedback_drafts")
-        await conn.execute("DELETE FROM feedback_reminders_sent")
         await conn.execute("DELETE FROM feedback_form_definitions")
         await conn.execute("DELETE FROM interviews")
         await conn.execute("DELETE FROM slack_users")
@@ -236,4 +239,112 @@ async def sample_interview_event(
         "schedule_id": str(schedule_id),
         "interviewer_id": str(interviewer_id),
         "application_id": str(application_id),
+    }
+
+
+@pytest_asyncio.fixture
+async def sample_advancement_rule(clean_db, sample_interview):
+    """Create a sample advancement rule with requirements and actions."""
+    import json
+
+    rule_id = uuid4()
+    requirement_id = uuid4()
+    action_id = uuid4()
+    interview_plan_id = uuid4()
+    interview_stage_id = uuid4()
+    target_stage_id = uuid4()
+
+    async with clean_db.acquire() as conn:
+        # Create rule
+        await conn.execute(
+            """
+            INSERT INTO advancement_rules
+            (rule_id, job_id, interview_plan_id, interview_stage_id,
+             target_stage_id, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
+            """,
+            rule_id,
+            None,  # job_id NULL = applies to all jobs
+            interview_plan_id,
+            interview_stage_id,
+            target_stage_id,
+        )
+
+        # Create requirement
+        await conn.execute(
+            """
+            INSERT INTO advancement_rule_requirements
+            (requirement_id, rule_id, interview_id, score_field_path,
+             operator, threshold_value, is_required, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
+            """,
+            requirement_id,
+            rule_id,
+            UUID(sample_interview["interview_id"]),
+            "overall_score",
+            ">=",
+            "3",
+        )
+
+        # Create action
+        await conn.execute(
+            """
+            INSERT INTO advancement_rule_actions
+            (action_id, rule_id, action_type, action_config, execution_order, created_at)
+            VALUES ($1, $2, $3, $4, 1, NOW())
+            """,
+            action_id,
+            rule_id,
+            "advance_stage",
+            json.dumps({}),
+        )
+
+    return {
+        "rule_id": str(rule_id),
+        "requirement_id": str(requirement_id),
+        "action_id": str(action_id),
+        "interview_plan_id": str(interview_plan_id),
+        "interview_stage_id": str(interview_stage_id),
+        "target_stage_id": str(target_stage_id),
+        "interview_id": sample_interview["interview_id"],
+    }
+
+
+@pytest_asyncio.fixture
+async def sample_feedback_submission(clean_db, sample_interview_event):
+    """Create a sample feedback submission."""
+    import json
+
+    feedback_id = uuid4()
+    event_id = UUID(sample_interview_event["event_id"])
+    application_id = UUID(sample_interview_event["application_id"])
+    interviewer_id = UUID(sample_interview_event["interviewer_id"])
+
+    async with clean_db.acquire() as conn:
+        # Get interview_id from the event
+        interview_id = await conn.fetchval(
+            "SELECT interview_id FROM interview_events WHERE event_id = $1", event_id
+        )
+
+        await conn.execute(
+            """
+            INSERT INTO feedback_submissions
+            (feedback_id, application_id, event_id, interviewer_id, interview_id,
+             submitted_at, submitted_values, processed_for_advancement_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '1 hour', $6, NULL, NOW())
+            """,
+            feedback_id,
+            application_id,
+            event_id,
+            interviewer_id,
+            interview_id,
+            json.dumps({"overall_score": 4, "technical_skills": 5}),
+        )
+
+    return {
+        "feedback_id": str(feedback_id),
+        "event_id": sample_interview_event["event_id"],
+        "application_id": sample_interview_event["application_id"],
+        "interviewer_id": sample_interview_event["interviewer_id"],
+        "submitted_values": {"overall_score": 4, "technical_skills": 5},
     }
