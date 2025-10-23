@@ -248,7 +248,7 @@ Slack sends form-encoded payload with a `payload` field containing JSON.
 The system asynchronously:
 1. Archives candidate in Ashby using `DEFAULT_ARCHIVE_REASON_ID`
 2. Records rejection in `advancement_executions` table
-3. Updates Slack message to show "✅ Rejection Email Sent"
+3. Updates Slack message to show "Rejection Email Sent"
 
 If rejection fails, message is updated with error details.
 

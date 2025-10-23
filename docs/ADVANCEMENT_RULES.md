@@ -300,22 +300,22 @@ Setup:
 - Requirement: `overall_score >= 4`
 
 Scenario 1 - All Pass:
-- Alice: overall_score = 5 ✅
-- Bob: overall_score = 4 ✅
-- Carol: overall_score = 5 ✅
-- **Result:** ADVANCE ✅
+- Alice: overall_score = 5 (PASS)
+- Bob: overall_score = 4 (PASS)
+- Carol: overall_score = 5 (PASS)
+- **Result:** ADVANCE
 
 Scenario 2 - One Fails:
-- Alice: overall_score = 5 ✅
-- Bob: overall_score = 4 ✅
-- Carol: overall_score = 2 ❌
-- **Result:** BLOCKED ❌ (rejection notification sent)
+- Alice: overall_score = 5 (PASS)
+- Bob: overall_score = 4 (PASS)
+- Carol: overall_score = 2 (FAIL)
+- **Result:** BLOCKED (rejection notification sent)
 
 Scenario 3 - Missing Feedback:
-- Alice: overall_score = 5 ✅
-- Bob: overall_score = 4 ✅
+- Alice: overall_score = 5 (PASS)
+- Bob: overall_score = 4 (PASS)
 - Carol: (not submitted yet)
-- **Result:** BLOCKED ❌ (waiting for all feedback)
+- **Result:** BLOCKED (waiting for all feedback)
 
 ### 30-Minute Wait Period
 
@@ -341,11 +341,11 @@ ADVANCEMENT_DRY_RUN_MODE=true
 ```
 
 **Behavior when enabled:**
-- ✅ Evaluation runs normally
-- ✅ Logs show what WOULD happen
-- ✅ Records created in `advancement_executions` with status = 'dry_run'
-- ❌ No actual API calls to advance candidates
-- ❌ No candidates moved
+- Evaluation runs normally
+- Logs show what WOULD happen
+- Records created in `advancement_executions` with status = 'dry_run'
+- No actual API calls to advance candidates
+- No candidates moved
 
 **Monitor dry-run logs:**
 ```
@@ -382,7 +382,7 @@ When a candidate fails requirements:
 3. Recruiter reviews feedback
 4. Clicks button to archive candidate
 5. System archives in Ashby using `DEFAULT_ARCHIVE_REASON_ID`
-6. Message updates to show "✅ Rejection Email Sent"
+6. Message updates to show "Rejection Email Sent"
 
 ### Configuration
 
@@ -415,18 +415,18 @@ ADMIN_SLACK_CHANNEL_ID=C123ABC456
 ### Example Notification
 
 ```
-⚠️ Candidate Did Not Meet Advancement Criteria
+WARNING: Candidate Did Not Meet Advancement Criteria
 
 John Smith
 Position: Senior Software Engineer
-📧 john.smith@email.com
-📱 +1 555-0123
+Email: john.smith@email.com
+Phone: +1 555-0123
 
 View Profile in Ashby
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 Interview Feedback Summary
+Interview Feedback Summary
 
 Technical Deep Dive
 • Overall Score: 2

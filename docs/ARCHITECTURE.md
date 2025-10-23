@@ -265,7 +265,7 @@ Recruiter receives Slack DM
     → Call services/advancement.execute_rejection()
       → clients/ashby.archive_candidate(application_id, DEFAULT_ARCHIVE_REASON_ID)
       → INSERT INTO advancement_executions (status='rejected', executed_by='recruiter_manual')
-    → clients/slack.chat_update() - Update message to show "✅ Rejection sent"
+    → clients/slack.chat_update() - Update message to show "Rejection sent"
   → Return 200 OK
 ```
 
