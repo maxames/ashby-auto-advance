@@ -14,6 +14,7 @@ from app.types.ashby import (
     CandidateTD,
     FeedbackSubmissionTD,
     InterviewStageTD,
+    JobInfoTD,
 )
 
 logger = get_logger()

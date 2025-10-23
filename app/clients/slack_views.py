@@ -43,7 +43,7 @@ def build_rejection_notification(
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": f"⚠️  Candidate Did Not Meet Advancement Criteria",
+                "text": "⚠️  Candidate Did Not Meet Advancement Criteria",
             },
         }
     )
@@ -88,7 +88,6 @@ def build_rejection_notification(
 
     for feedback in feedback_summaries:
         interview_title = feedback.get("interview_title", "Interview")
-        submitted_at = feedback.get("submitted_at", "")
         scores = feedback.get("scores", {})
 
         # Build scores text
@@ -127,7 +126,10 @@ def build_rejection_notification(
                         "title": {"type": "plain_text", "text": "Confirm Rejection"},
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"Are you sure you want to archive {candidate_name} and send a rejection email?",
+                            "text": (
+                                f"Are you sure you want to archive {candidate_name} "
+                                "and send a rejection email?"
+                            ),
                         },
                         "confirm": {
                             "type": "plain_text",
@@ -147,7 +149,10 @@ def build_rejection_notification(
             "elements": [
                 {
                     "type": "mrkdwn",
-                    "text": "_This candidate was automatically flagged because they did not meet the scoring thresholds for advancement._",
+                    "text": (
+                        "_This candidate was automatically flagged because they did not "
+                        "meet the scoring thresholds for advancement._"
+                    ),
                 }
             ],
         }

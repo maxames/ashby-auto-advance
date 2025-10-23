@@ -113,36 +113,9 @@ class TestSlackPayloadExtraction:
         assert metadata["event_id"] == "event_001"
         assert metadata["form_definition_id"] == "form_def_123"
 
-    def test_extract_modal_form_values(self):
-        """Test extracting form values from modal submission."""
-        from app.clients.slack_parsers import extract_form_values
-        from tests.fixtures.sample_payloads import SLACK_MODAL_SUBMISSION
-
-        state_values = SLACK_MODAL_SUBMISSION["view"]["state"]["values"]
-        form_values = extract_form_values(state_values)
-
-        # Should extract the values
-        assert "overall_score" in form_values or "notes" in form_values
-
-    def test_extract_ashby_field_submissions(self):
-        """Test converting Slack values to Ashby format."""
-        from app.clients.slack_parsers import extract_field_submissions_for_ashby
-        from tests.fixtures.sample_payloads import (
-            ASHBY_FEEDBACK_FORM,
-            SLACK_MODAL_SUBMISSION,
-        )
-
-        state_values = SLACK_MODAL_SUBMISSION["view"]["state"]["values"]
-        form_definition = ASHBY_FEEDBACK_FORM["results"]
-        submissions = extract_field_submissions_for_ashby(state_values, form_definition)
-
-        # Should return list of field submissions
-        assert isinstance(submissions, list)
-
-        if len(submissions) > 0:
-            submission = submissions[0]
-            assert "path" in submission
-            assert "value" in submission
+    # Tests for extract_modal_form_values and extract_ashby_field_submissions removed
+    # These were for the old feedback modal system that has been replaced with
+    # the auto-advancement system which doesn't use Slack modals for feedback collection
 
 
 class TestSlackFieldTypes:

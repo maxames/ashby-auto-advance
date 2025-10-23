@@ -86,7 +86,7 @@ class SlackClient:
             logger.error("slack_file_register_failed", error=str(e))
             return None
 
-    async def chat_postMessage(
+    async def chat_postMessage(  # noqa: N802
         self, channel: str, text: str, blocks: list[dict[str, Any]] | None = None
     ) -> AsyncSlackResponse:
         """

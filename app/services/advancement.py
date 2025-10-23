@@ -711,6 +711,11 @@ async def execute_rejection(application_id: str) -> dict[str, Any]:
         # Use archive_reason_id from config (Decision A)
         archive_reason_id = settings.default_archive_reason_id
 
+        if not archive_reason_id:
+            raise ValueError(
+                "DEFAULT_ARCHIVE_REASON_ID must be configured to execute rejections"
+            )
+
         await archive_candidate(
             application_id=application_id,
             archive_reason_id=archive_reason_id,

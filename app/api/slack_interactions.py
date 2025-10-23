@@ -80,7 +80,11 @@ async def handle_rejection_button(
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "✅ *Rejection Email Sent*\n\nThe candidate has been archived and a rejection email was sent.",
+                            "text": (
+                                "✅ *Rejection Email Sent*\n\n"
+                                "The candidate has been archived and "
+                                "a rejection email was sent."
+                            ),
                         },
                     }
                 ],
@@ -102,7 +106,10 @@ async def handle_rejection_button(
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"❌ *Failed to Send Rejection*\n\n{result.get('error', 'Unknown error')}",
+                            "text": (
+                                f"❌ *Failed to Send Rejection*\n\n"
+                                f"{result.get('error', 'Unknown error')}"
+                            ),
                         },
                     }
                 ],
