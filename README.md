@@ -1,22 +1,24 @@
-# Ashby Slack Feedback
+# Ashby Auto-Advancement
 
-> Automated interview feedback reminders via Slack for Ashby ATS
+> Automated candidate advancement system for Ashby ATS
 
 [![CI](https://github.com/maxames/ashby-slack-feedback/workflows/CI/badge.svg)](https://github.com/maxames/ashby-slack-feedback/actions)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A FastAPI application that automates the interview feedback collection process by sending timely reminders to interviewers via Slack, providing interactive feedback forms, and automatically submitting responses back to Ashby ATS.
+A FastAPI application that automatically advances candidates through interview stages based on configurable rules. Polls feedback from Ashby API, evaluates scores against thresholds, and moves candidates forward or notifies recruiters of rejections.
 
 ## Features
 
 - Webhook Integration: Real-time ingestion of interview schedule updates from Ashby
-- Smart Reminders: Automatic Slack DMs sent 4-20 minutes before interviews
-- Interactive Forms: Dynamic Slack modal forms matching Ashby feedback form definitions
-- Auto-Save Drafts: Press Enter while typing to save your progress automatically
+- Automated Feedback Polling: Syncs feedback submissions from Ashby API every 30 minutes
+- Rule-Based Evaluation Engine: Configurable score thresholds and advancement criteria
+- Automatic Stage Advancement: Moves candidates forward when all requirements pass
+- Rejection Notifications: Sends Slack alerts to recruiters when candidates fail criteria
+- Dry-Run Mode: Test rules safely without making actual changes
+- Full Audit Trail: Complete history of all advancement decisions in database
 - Idempotent Processing: Safe handling of duplicate webhooks and submissions
-- Resume Access: One-click candidate resume viewing directly from Slack
 - Comprehensive Logging: Structured logging with `structlog` for observability
 - Rate Limiting: Built-in protection against webhook spam
 - Clean Architecture: Clear separation of concerns for easy maintenance
@@ -104,9 +106,10 @@ app/
 ```
 
 **Data Flow:**
-1. Webhook Ingestion: Ashby → API → Services → Database
-2. Reminder Scheduling: Scheduler → Services → Slack Client → Slack
-3. Feedback Submission: Slack → API → Services → Ashby Client → Ashby
+1. Webhook Ingestion: Ashby → API → Services → Database (with job_id/interview_plan_id fetch)
+2. Feedback Polling: Scheduler → Services → Ashby API → Database (every 30 min)
+3. Advancement Evaluation: Scheduler → Rules Engine → Stage Advancement → Ashby API (every 30 min)
+4. Rejection Workflow: Evaluation → Slack Notification → Recruiter Action → Archive Candidate
 
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed system design.
 
@@ -115,6 +118,7 @@ See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed system design.
 - [Architecture](docs/ARCHITECTURE.md) - System design and separation of concerns
 - [API Reference](docs/API.md) - Endpoint documentation with examples
 - [Deployment Guide](docs/DEPLOYMENT.md) - Deploy to Render, Railway, Fly.io, or manual
+- [Advancement Rules](docs/ADVANCEMENT_RULES.md) - Rule configuration and examples
 
 ## Configuration
 
@@ -127,7 +131,12 @@ All configuration is managed through environment variables. See [.env.example](.
 | `ASHBY_WEBHOOK_SECRET` | Secret for webhook signature verification | Yes |
 | `SLACK_BOT_TOKEN` | Slack bot token (xoxb-...) | Yes |
 | `SLACK_SIGNING_SECRET` | Slack signing secret for request verification | Yes |
+| `DEFAULT_ARCHIVE_REASON_ID` | Archive reason UUID from Ashby for rejections | Yes |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | No (default: INFO) |
+| `ADVANCEMENT_DRY_RUN_MODE` | Test mode without real advancements | No (default: false) |
+| `ADVANCEMENT_FEEDBACK_TIMEOUT_DAYS` | Days before schedule times out | No (default: 7) |
+| `ADVANCEMENT_FEEDBACK_MIN_WAIT_MINUTES` | Wait period after feedback submission | No (default: 30) |
+| `ADMIN_SLACK_CHANNEL_ID` | Channel ID for error alerts and rejection notifications | No |
 
 ## Testing
 
@@ -185,31 +194,32 @@ For security concerns, please see [SECURITY.md](SECURITY.md).
 
 ## How It Works
 
-1. Setup: Configure Ashby webhook to send interview schedule updates to your deployment
-2. Ingestion: Application receives and validates webhooks, storing interview data
-3. Scheduling: Background scheduler checks every 5 minutes for upcoming interviews
-4. Reminders: Interviewers receive Slack DMs 4-20 minutes before their interviews
-5. Feedback: Interviewers click to open a modal form with comprehensive candidate context
-   - Full candidate profile with contact info and social links
-   - Interview details with meeting links and instructions
-   - Auto-saves progress when pressing Enter in text fields
-6. Submission: Completed feedback is submitted directly to Ashby via API
-7. Tracking: Application tracks reminder delivery and submission status
+1. **Setup**: Configure Ashby webhook to send interview schedule updates to your deployment
+2. **Ingestion**: Application receives webhooks and fetches job_id + interview_plan_id from Ashby API
+3. **Feedback Polling**: Background scheduler polls Ashby API every 30 minutes for new feedback submissions
+4. **Rule Matching**: System finds advancement rule based on job + interview plan + stage
+5. **Evaluation**: Checks if all interviewers submitted feedback and all scores pass thresholds
+6. **Advancement**:
+   - If all requirements pass: Automatically advances candidate to next stage via Ashby API
+   - If requirements fail: Sends Slack notification to recruiter with rejection button
+7. **Audit Trail**: All decisions and executions recorded in `advancement_executions` table
 
 ## Monitoring
 
 The application provides several monitoring endpoints:
 
 - `GET /health` - Health check with database connectivity and connection pool stats
-- `GET /admin/stats` - System statistics (interviews, reminders, forms)
+- `GET /admin/stats` - System statistics (interviews, forms, users)
+- `GET /admin/advancement-stats` - Advancement-specific metrics (executions, failures, pending evaluations)
 - Structured logging for observability (JSON format in production)
 
 ## Roadmap
 
-- [ ] Implement reminder escalation for overdue feedback
-- [ ] Add analytics dashboard for feedback metrics
-- [ ] Support for custom reminder timing windows
-- [ ] Slack thread replies for feedback status updates
+- [ ] Rule UI builder for non-technical users
+- [ ] Machine learning for threshold optimization
+- [ ] Multi-stage advancement chains
+- [ ] Slack approval workflow for edge cases
+- [ ] Analytics dashboard for advancement metrics
 
 ## Support
 

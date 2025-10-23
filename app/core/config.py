@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     # Application
     log_level: str = "INFO"
 
+    # Advancement automation
+    advancement_dry_run_mode: bool = False
+    advancement_feedback_timeout_days: int = 7
+    advancement_feedback_min_wait_minutes: int = 30
+    admin_slack_channel_id: str | None = None
+    default_archive_reason_id: str
+
     class Config:
         """Pydantic configuration."""
 

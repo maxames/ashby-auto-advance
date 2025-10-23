@@ -78,7 +78,7 @@ Root endpoint returning application name.
 
 ```json
 {
-  "message": "Ashby Slack Feedback Application"
+  "message": "Ashby Auto-Advancement System"
 }
 ```
 
@@ -202,7 +202,7 @@ Receive and process Ashby webhook events.
 
 **`POST /slack/interactions`**
 
-Handle Slack interactive component events (modal submissions, button clicks, view closures).
+Handle Slack interactive component events (rejection button clicks only).
 
 #### Headers
 
@@ -216,105 +216,41 @@ Handle Slack interactive component events (modal submissions, button clicks, vie
 
 Slack sends form-encoded payload with a `payload` field containing JSON.
 
-**Modal Submission**:
+**Rejection Button Click**:
 
 ```json
 {
-  "type": "view_submission",
+  "type": "block_actions",
   "user": {
     "id": "U123ABC456",
     "name": "jane.doe"
   },
-  "view": {
-    "id": "V123ABC456",
-    "type": "modal",
-    "private_metadata": "{\"event_id\":\"event-uuid\",\"interviewer_id\":\"interviewer-uuid\",\"form_definition_id\":\"form-uuid\"}",
-    "state": {
-      "values": {
-        "block-id": {
-          "action-id": {
-            "type": "plain_text_input",
-            "value": "User's response"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-**View Closed** (user dismisses modal):
-
-> **Note**: view_closed events do NOT include state.values, so drafts cannot be
-> saved on modal close. Instead, we use dispatch_action_config on text inputs
-> to save drafts when users press Enter.
-
-```json
-{
-  "type": "view_closed",
-  "user": {
-    "id": "U123ABC456"
-  },
-  "view": {
-    "private_metadata": "{\"event_id\":\"event-uuid\",\"interviewer_id\":\"interviewer-uuid\"}"
-    // Note: state.values is NOT included in view_closed events
-  }
-}
-```
-
-**Dispatch Action** (Enter key pressed in text field):
-
-```json
-{
-  "type": "block_actions",
-  "view": {
-    "private_metadata": "{\"event_id\":\"event-uuid\",\"interviewer_id\":\"interviewer-uuid\"}",
-    "state": {
-      "values": { /* Current form state - this IS included! */ }
-    }
-  },
-  "actions": [{
-    "action_id": "field_overall_notes",
-    "type": "plain_text_input",
-    "value": "User's current text"
-  }]
-}
-```
-
-**Open Feedback Modal** (block action):
-
-```json
-{
-  "type": "block_actions",
-  "user": {
-    "id": "U123ABC456"
-  },
   "actions": [
     {
-      "action_id": "open_feedback_modal",
-      "block_id": "actions_block",
-      "value": "event-uuid"
+      "action_id": "send_rejection",
+      "type": "button",
+      "value": "{\"application_id\":\"app-uuid\",\"action\":\"send_rejection\"}"
     }
-  ]
+  ],
+  "message": {
+    "ts": "1234567890.123456"
+  },
+  "channel": {
+    "id": "D123ABC456"
+  }
 }
 ```
 
 #### Responses
 
-**200 OK** - Interaction processed
+**200 OK** - Button click processed
 
-For modal submissions, returns acknowledgment or validation errors:
+The system asynchronously:
+1. Archives candidate in Ashby using `DEFAULT_ARCHIVE_REASON_ID`
+2. Records rejection in `advancement_executions` table
+3. Updates Slack message to show "✅ Rejection Email Sent"
 
-```json
-{
-  "response_action": "errors",
-  "errors": {
-    "block-id": "This field is required"
-  }
-}
-```
-
-For button clicks, returns empty body to prevent timeout.
+If rejection fails, message is updated with error details.
 
 ---
 
@@ -392,6 +328,165 @@ Retrieve application statistics.
     "total": 45,
     "active": 43
   }
+}
+```
+
+---
+
+### Trigger Advancement Evaluation
+
+**`POST /admin/trigger-advancement-evaluation`**
+
+Manually trigger advancement evaluation for testing.
+
+#### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `schedule_id` | No* | Specific schedule UUID to evaluate |
+| `application_id` | No* | Evaluate all schedules for this application |
+
+*Must provide either `schedule_id` OR `application_id`
+
+#### Response
+
+**200 OK** - With schedule_id
+
+```json
+{
+  "schedule_id": "schedule-uuid",
+  "evaluation": {
+    "ready": true,
+    "rule_id": "rule-uuid",
+    "target_stage_id": "target-stage-uuid",
+    "evaluation_results": {
+      "all_passed": true,
+      "results": [...]
+    },
+    "application_id": "app-uuid"
+  }
+}
+```
+
+**200 OK** - With application_id
+
+```json
+{
+  "application_id": "app-uuid",
+  "schedules_evaluated": 2,
+  "results": [
+    {
+      "schedule_id": "schedule-uuid-1",
+      "evaluation": { "ready": false, "blocking_reason": "no_matching_rule" }
+    },
+    {
+      "schedule_id": "schedule-uuid-2",
+      "evaluation": { "ready": true, "rule_id": "rule-uuid", ... }
+    }
+  ]
+}
+```
+
+---
+
+### Create Advancement Rule
+
+**`POST /admin/create-advancement-rule`**
+
+Create a new advancement rule with requirements and actions.
+
+#### Request Body
+
+```json
+{
+  "job_id": "job-uuid",
+  "interview_plan_id": "plan-uuid",
+  "interview_stage_id": "stage-uuid",
+  "target_stage_id": null,
+  "requirements": [
+    {
+      "interview_id": "interview-uuid",
+      "score_field_path": "overall_score",
+      "operator": ">=",
+      "threshold_value": "3",
+      "is_required": true
+    }
+  ],
+  "actions": [
+    {
+      "action_type": "advance_stage",
+      "action_config": null,
+      "execution_order": 1
+    }
+  ]
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `job_id` | UUID \| null | Optional job filter (null = applies to all jobs) |
+| `interview_plan_id` | UUID | Interview plan this rule applies to |
+| `interview_stage_id` | UUID | Interview stage this rule applies to |
+| `target_stage_id` | UUID \| null | Target stage (null = next sequential) |
+| `requirements` | array | List of score requirements (all must pass) |
+| `actions` | array | Actions to execute when requirements pass |
+
+**Requirement Fields:**
+
+| Field | Description |
+|-------|-------------|
+| `interview_id` | Interview definition UUID |
+| `score_field_path` | Field name in feedback (e.g., "overall_score") |
+| `operator` | Comparison: `>=`, `>`, `==`, `<=`, `<` |
+| `threshold_value` | Minimum acceptable value (string) |
+| `is_required` | If false, interview is optional |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "rule_id": "rule-uuid",
+  "requirement_ids": ["req-uuid-1", "req-uuid-2"],
+  "action_ids": ["action-uuid"],
+  "status": "created"
+}
+```
+
+---
+
+### Get Advancement Stats
+
+**`GET /admin/advancement-stats`**
+
+Get advancement execution statistics and monitoring data.
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "last_7_days": {
+    "success": 42,
+    "failed": 3,
+    "dry_run": 15,
+    "rejected": 8
+  },
+  "pending_evaluations": 12,
+  "active_rules": 5,
+  "recent_failures": [
+    {
+      "execution_id": "exec-uuid",
+      "schedule_id": "schedule-uuid",
+      "application_id": "app-uuid",
+      "failure_reason": "Failed to advance candidate stage: Network error",
+      "executed_at": "2024-10-23T14:30:00Z"
+    }
+  ]
 }
 ```
 
@@ -536,7 +631,7 @@ response = httpx.post(
 
 ## Versioning
 
-Current version: **1.0.0**
+Current version: **2.0.0**
 
 The API currently does not use versioning. Breaking changes will be communicated via:
 - GitHub releases
@@ -544,4 +639,9 @@ The API currently does not use versioning. Breaking changes will be communicated
 - Migration guides in documentation
 
 Future versions may use URL versioning (`/v2/webhooks/ashby`) or header versioning.
+
+### Version History
+
+- **2.0.0** - Auto-advancement system (removed feedback modals, added advancement automation)
+- **1.0.0** - Initial release (feedback reminders via Slack)
 

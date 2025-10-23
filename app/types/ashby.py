@@ -91,3 +91,37 @@ class JobInfoTD(TypedDict):
 
     id: str
     title: str
+
+
+class FeedbackSubmissionTD(TypedDict):
+    """Feedback submission from Ashby applicationFeedback.list API."""
+
+    id: str
+    applicationId: str
+    feedbackFormDefinitionId: str
+    interviewId: str
+    interviewEventId: str
+    submittedAt: str  # ISO timestamp
+    submittedByUserId: str
+    submittedValues: dict[
+        str, str | int | bool | dict[str, str | int] | list[str] | None
+    ]
+
+
+class InterviewStageTD(TypedDict):
+    """Interview stage from Ashby interviewStage.info API."""
+
+    id: str
+    title: str
+    type: str
+    orderInInterviewPlan: int
+    interviewStageGroupId: NotRequired[str]
+    interviewPlanId: str
+
+
+class ApplicationChangeStageResponseTD(TypedDict):
+    """Response from Ashby application.changeStage API."""
+
+    id: str
+    status: str
+    currentInterviewStage: NotRequired[dict[str, str]]

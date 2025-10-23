@@ -50,9 +50,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 # Create FastAPI app
 app = FastAPI(
-    title="Ashby Slack Feedback",
-    description="Interview feedback reminders via Slack",
-    version="1.0.0",
+    title="Ashby Auto-Advancement",
+    description="Automated candidate advancement system for Ashby ATS",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -106,4 +106,4 @@ async def health_check() -> dict[str, Any]:
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint."""
-    return {"message": "Ashby Slack Feedback Application"}
+    return {"message": "Ashby Auto-Advancement System"}

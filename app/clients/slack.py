@@ -36,14 +36,18 @@ class SlackClient:
             Exception: If message send fails
         """
         try:
-            response = await self.client.chat_postMessage(channel=user_id, text=text, blocks=blocks)
+            response = await self.client.chat_postMessage(
+                channel=user_id, text=text, blocks=blocks
+            )
             logger.info("slack_dm_sent", user_id=user_id)
             return response
         except Exception as e:
             logger.error("slack_dm_failed", user_id=user_id, error=str(e))
             raise
 
-    async def open_modal(self, trigger_id: str, view: dict[str, Any]) -> AsyncSlackResponse:
+    async def open_modal(
+        self, trigger_id: str, view: dict[str, Any]
+    ) -> AsyncSlackResponse:
         """
         Open a modal view.
 
@@ -56,7 +60,9 @@ class SlackClient:
         """
         return await self.client.views_open(trigger_id=trigger_id, view=view)
 
-    async def register_remote_file(self, external_id: str, url: str, title: str) -> str | None:
+    async def register_remote_file(
+        self, external_id: str, url: str, title: str
+    ) -> str | None:
         """
         Register remote file with Slack.
 
@@ -79,6 +85,65 @@ class SlackClient:
         except Exception as e:
             logger.error("slack_file_register_failed", error=str(e))
             return None
+
+    async def chat_postMessage(
+        self, channel: str, text: str, blocks: list[dict[str, Any]] | None = None
+    ) -> AsyncSlackResponse:
+        """
+        Post message to a channel.
+
+        Args:
+            channel: Channel ID or user ID
+            text: Fallback text
+            blocks: Block Kit blocks
+
+        Returns:
+            Slack API response
+
+        Raises:
+            Exception: If message send fails
+        """
+        try:
+            response = await self.client.chat_postMessage(
+                channel=channel, text=text, blocks=blocks
+            )
+            logger.info("slack_message_sent", channel=channel)
+            return response
+        except Exception as e:
+            logger.error("slack_message_failed", channel=channel, error=str(e))
+            raise
+
+    async def chat_update(
+        self,
+        channel: str,
+        ts: str,
+        text: str,
+        blocks: list[dict[str, Any]] | None = None,
+    ) -> AsyncSlackResponse:
+        """
+        Update an existing message.
+
+        Args:
+            channel: Channel ID
+            ts: Message timestamp
+            text: New text
+            blocks: New blocks
+
+        Returns:
+            Slack API response
+
+        Raises:
+            Exception: If update fails
+        """
+        try:
+            response = await self.client.chat_update(
+                channel=channel, ts=ts, text=text, blocks=blocks
+            )
+            logger.info("slack_message_updated", channel=channel, ts=ts)
+            return response
+        except Exception as e:
+            logger.error("slack_update_failed", channel=channel, ts=ts, error=str(e))
+            raise
 
 
 # Module singleton

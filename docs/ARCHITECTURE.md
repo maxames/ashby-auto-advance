@@ -11,11 +11,14 @@ graph LR
     A[Ashby ATS] -->|Webhook| B[API Layer]
     B --> C[Services Layer]
     C --> D[PostgreSQL Database]
-    E[APScheduler] -->|Every 5min| C
-    C -->|Send Reminders| F[Slack API]
-    F -->|Interactions| B
-    B --> C
-    C -->|Submit Feedback| A
+    E[APScheduler] -->|Every 30min| F[Feedback Sync]
+    E -->|Every 30min| G[Advancement Eval]
+    F --> C
+    G --> C
+    C -->|Poll Feedback| A
+    C -->|Advance Stage| A
+    C -->|Send Notifications| H[Slack API]
+    H -->|Rejection Button| B
 ```
 
 ## Layer Responsibilities
@@ -33,8 +36,8 @@ Responsibilities:
 
 Files:
 - `webhooks.py` - Ashby webhook endpoint with signature verification
-- `slack_interactions.py` - Slack interactive component handlers (modals, actions)
-- `admin.py` - Admin endpoints for manual sync triggers and stats
+- `slack_interactions.py` - Slack interaction handlers (rejection button clicks only)
+- `admin.py` - Admin endpoints for manual sync triggers, stats, and advancement testing
 
 What it does NOT do:
 - Business logic
@@ -54,11 +57,9 @@ Responsibilities:
 - Payload parsing
 
 Files:
-- `ashby.py` - Ashby ATS API client (fetch candidate info, submit feedback)
-- `slack.py` - Slack SDK wrapper (send DMs, open modals, register files)
-- `slack_views.py` - Slack UI formatters (feedback modal, reminder messages)
-- `slack_field_builders.py` - Slack form field builders (text, select, date, etc.)
-- `slack_parsers.py` - Slack payload extractors (form values, submissions)
+- `ashby.py` - Ashby ATS API client (fetch candidate info, poll feedback, advance stages, archive candidates)
+- `slack.py` - Slack SDK wrapper (send messages, update messages)
+- `slack_views.py` - Slack UI formatters (rejection notifications only)
 
 What it does NOT do:
 - Business logic
@@ -77,11 +78,12 @@ Responsibilities:
 - Transaction management
 
 Files:
-- `interviews.py` - Interview schedule processing (webhook business logic)
-- `feedback.py` - Feedback draft management and submission
-- `reminders.py` - Reminder window detection and sending logic
+- `interviews.py` - Interview schedule processing (webhook business logic, fetches job_id and interview_plan_id)
+- `rules.py` - Rule matching and evaluation engine (finds rules, evaluates requirements, determines target stage)
+- `feedback_sync.py` - Polls Ashby API for feedback submissions every 30 minutes
+- `advancement.py` - Orchestrates evaluation, advancement execution, and rejection notifications
 - `sync.py` - Data synchronization (forms, interviews, users)
-- `scheduler.py` - APScheduler configuration and job management
+- `scheduler.py` - APScheduler configuration and job management (5 background jobs)
 
 What it does NOT do:
 - HTTP handling
@@ -174,6 +176,9 @@ Ashby ATS
       → Validate status (Scheduled/Complete/Cancelled)
       → Apply business rules (cancellation → delete)
       → Execute full-replace upsert to database
+      → Fetch interview_plan_id (NEW: clients/ashby.fetch_interview_stage_info)
+      → Extract job_id from first interview event (NEW)
+      → Update schedule with advancement tracking fields (NEW)
       → Log webhook to audit table
   → Return 204 No Content
 ```
@@ -182,56 +187,105 @@ Ashby ATS
 - Signature verification happens in API layer (protocol-specific)
 - Business rules (status validation) happen in service layer
 - Full-replace strategy ensures idempotency
+- API call to fetch interview_plan_id adds ~100-300ms latency (acceptable for MVP)
 
-### 2. Reminder Scheduling Flow
+### 2. Feedback Sync Flow
 
 ```
-APScheduler (every 5 minutes)
-  → services/reminders.send_due_reminders()
-    → Query database for interviews starting in 4-20 minutes
-    → Filter out already-sent reminders
-    → For each reminder:
-      → Fetch candidate info (clients/ashby.fetch_candidate_info)
-      → Build reminder message (clients/slack_views.build_reminder_message)
-      → Send DM (clients/slack.send_dm)
-      → Record in feedback_reminders_sent table
+APScheduler (every 30 minutes)
+  → services/feedback_sync.sync_feedback_for_active_schedules()
+    → Query interview_schedules WHERE status IN ('WaitingOnFeedback', 'Complete')
+    → Get distinct application_ids
+    → For each application_id:
+      → Call clients/ashby.fetch_application_feedback(application_id)
+      → For each feedback submission:
+        → INSERT INTO feedback_submissions (ON CONFLICT DO NOTHING)
+        → Set processed_for_advancement_at = NULL
+    → Log sync results (applications processed, new submissions)
 ```
 
 **Key decisions**:
-- 4-20 minute window balances timeliness vs. spam
-- Claim-before-send pattern prevents duplicate reminders
-- View building happens in client layer
+- ON CONFLICT DO NOTHING ensures idempotency (safe to run multiple times)
+- Error isolation: One application failure doesn't stop batch
+- Pagination handled automatically in ashby client
 
-### 3. Feedback Submission Flow
+### 3. Advancement Evaluation Flow
 
 ```
-Slack Modal Submission
+APScheduler (every 30 minutes)
+  → services/advancement.process_advancement_evaluations()
+    → Get schedules ready for evaluation:
+      → Status IN ('WaitingOnFeedback', 'Complete')
+      → Has interview_plan_id
+      → Not evaluated recently OR updated since last eval
+      → Within timeout window (7 days default)
+    → For each schedule:
+      → services/rules.find_matching_rule(job_id, plan_id, stage_id)
+      → Query feedback_submissions for schedule
+      → Check 30-minute wait period (submitted_at < NOW() - 30 min)
+      → services/rules.evaluate_rule_requirements():
+        → For each requirement:
+          → Check interview is scheduled
+          → Count assigned interviewers
+          → Verify ALL interviewers submitted feedback
+          → Extract score value from submitted_values JSONB
+          → Compare against threshold using operator
+        → ALL requirements must pass
+      → If all passed:
+        → services/rules.get_target_stage_for_rule()
+        → clients/ashby.advance_candidate_stage() (with 3 retries, exponential backoff)
+        → INSERT INTO advancement_executions (status='success')
+        → UPDATE feedback_submissions.processed_for_advancement_at
+        → UPDATE interview_schedules.last_evaluated_for_advancement_at
+      → If failed:
+        → services/advancement.send_rejection_notification()
+        → INSERT INTO advancement_executions (status='rejected')
+        → UPDATE interview_schedules.last_evaluated_for_advancement_at
+    → Log summary statistics
+```
+
+**Key decisions**:
+- Mark last_evaluated_for_advancement_at on EVERY evaluation (prevents infinite retry loops)
+- Rejection notification sent on first failure (Decision B)
+- 3 retries with exponential backoff (2s, 4s, 8s delays)
+- Dry-run mode skips API call but logs decision
+
+### 4. Rejection Workflow Flow
+
+```
+Recruiter receives Slack DM
+  → Message includes:
+    → Candidate name and profile link
+    → Feedback summary with scores
+    → Button: "Archive & Send Rejection Email"
+  → Recruiter clicks button
   → POST /slack/interactions (api/slack_interactions.py)
-    → Verify Slack signature (Slack SDK)
-    → Parse private_metadata (event_id, interviewer_id, form_id)
-    → Extract form values (clients/slack_parsers.extract_form_values)
-    → Call services/feedback.submit_feedback()
-      → Transform to Ashby format (clients/slack_parsers)
-      → Submit to Ashby (clients/ashby.submit_feedback)
-      → Delete draft from database
-      → Update reminder tracking (submitted_at timestamp)
+    → Verify Slack signature
+    → Parse button metadata (application_id)
+    → Call services/advancement.execute_rejection()
+      → clients/ashby.archive_candidate(application_id, DEFAULT_ARCHIVE_REASON_ID)
+      → INSERT INTO advancement_executions (status='rejected', executed_by='recruiter_manual')
+    → clients/slack.chat_update() - Update message to show "✅ Rejection sent"
   → Return 200 OK
 ```
 
 **Key decisions**:
-- Draft auto-save on Enter key press (dispatch_action_config) for RichText fields
-- Slack's view_closed event doesn't include state values, so we use dispatch actions
-- Ashby submission happens before draft deletion (safety)
-- Private metadata carries context without database lookup
+- Archive reason from environment variable (Decision A: DEFAULT_ARCHIVE_REASON_ID)
+- Confirmation dialog prevents accidental clicks
+- Message update provides immediate feedback
+- Communication template optional for MVP (can add later)
 
 ## Database Schema
 
 ### Core Tables
 
-**`interview_schedules`**
+**`interview_schedules`** (Modified)
 - Primary webhook ingestion table
 - Stores schedule-level metadata
 - Links to events via schedule_id
+- **NEW**: `job_id` - Extracted from first interview event
+- **NEW**: `interview_plan_id` - Fetched via interviewStage.info API
+- **NEW**: `last_evaluated_for_advancement_at` - Tracks evaluation attempts
 
 **`interview_events`**
 - Individual interview events
@@ -241,17 +295,46 @@ Slack Modal Submission
 **`interview_assignments`**
 - Many-to-many: events ↔ interviewers
 - Stores interviewer metadata
-- Used for reminder targeting
+- Used for feedback counting in advancement evaluation
 
-**`feedback_reminders_sent`**
-- Tracks reminder delivery
-- Prevents duplicate sends
-- Records open/submit timestamps
+**`advancement_rules`** (New)
+- Rule configuration for advancement
+- Matches on job_id + interview_plan_id + interview_stage_id
+- Specifies target_stage_id (or null for sequential)
+- Can be enabled/disabled via is_active flag
 
-**`feedback_drafts`**
-- Auto-saved form data
-- Prevents data loss on modal dismiss
-- Keyed by (event_id, interviewer_id)
+**`advancement_rule_requirements`** (New)
+- Score thresholds for each rule
+- Specifies interview_id, score_field_path, operator, threshold_value
+- is_required flag for optional interviews
+- All requirements must pass for advancement
+
+**`advancement_rule_actions`** (New)
+- Actions to execute when rule passes/fails
+- Currently supports: advance_stage, send_rejection_notification
+- Configurable execution_order for multiple actions
+
+**`feedback_submissions`** (New)
+- Stores feedback synced from Ashby API
+- Links to event_id and application_id
+- Contains full submitted_values JSONB
+- processed_for_advancement_at tracks if used in evaluation
+
+**`advancement_executions`** (New)
+- Complete audit trail of all advancement decisions
+- Records success/failed/dry_run/rejected status
+- Stores evaluation_results JSONB for debugging
+- Links to schedule_id, application_id, and rule_id
+
+### Deprecated Tables
+
+**`feedback_reminders_sent`** (Deprecated - kept for backward compatibility)
+- No longer actively used
+- Can be dropped after confirming no rollback needed
+
+**`feedback_drafts`** (Deprecated - kept for backward compatibility)
+- No longer actively used
+- Can be dropped after confirming no rollback needed
 
 ### Reference Tables
 
@@ -310,6 +393,12 @@ All architectural patterns must be reflected in this document before merge.
 - Complex nested structures (button elements, modal internals) remain `dict[str, Any]` (pragmatic 80/20 trade-off)
 - Block structure validated via contract tests rather than exhaustive typing
 - Full typing would require 50+ nested TypedDicts with minimal benefit
+
+**Ashby API Response Types** (v2.0):
+- `FeedbackSubmissionTD` - Response from `applicationFeedback.list` endpoint
+- `InterviewStageTD` - Response from `interviewStage.info` endpoint
+- `ApplicationChangeStageResponseTD` - Response from `application.changeStage` endpoint
+- All typed at client boundary in `clients/ashby.py` using `cast()`
 
 **External SDK Stubs:**
 - Type stubs created for `slack_sdk` in `/stubs/slack_sdk/web/async_client.pyi`
@@ -451,11 +540,12 @@ await db.execute(
 
 ### Background Processing
 
-**APScheduler**:
-- Reminders: Every 5 minutes (low overhead)
+**APScheduler** (5 jobs):
+- Feedback sync: Every 30 minutes (polls Ashby API for new submissions)
+- Advancement evaluations: Every 30 minutes (evaluates schedules and advances candidates)
 - Form sync: Every 6 hours (API rate limit friendly)
-- Interview sync: Every 15 minutes (balance freshness vs. load)
-- Slack user sync: Every hour
+- Interview sync: Every 12 hours (updates interview definitions)
+- Slack user sync: Every 12 hours (email to user ID mapping)
 
 ## Testing Strategy
 
@@ -464,7 +554,9 @@ await db.execute(
 Focus: Pure functions and utilities
 - `test_security.py` - HMAC verification, timing attacks
 - `test_time_utils.py` - Timezone handling, parsing, formatting
-- `test_field_builders.py` - Slack field type mappings
+- `test_rules.py` - Rule matching, requirement evaluation, score comparison
+- `test_advancement.py` - Advancement service logic
+- `test_slack_views.py` - Rejection notification builder
 
 Characteristics:
 - Fast (<1ms per test)
@@ -475,13 +567,13 @@ Characteristics:
 
 Focus: Database operations and workflows
 - `test_webhook_flow.py` - Webhook → DB with real database
-- `test_feedback_flow.py` - Draft save/load/submit flow
-- `test_reminders.py` - Reminder window detection and message building
+- `test_advancement_flow.py` - Full advancement workflow (rule matching, evaluation, execution)
+- `test_feedback_sync.py` - Feedback polling from Ashby API
 
 Characteristics:
 - Use real test database
 - Test database transactions
-- Cover realistic edge cases (cancellations, reschedules, missing data)
+- Cover realistic edge cases (cancellations, reschedules, missing data, multiple interviewers)
 
 ### Contract Tests
 
@@ -560,16 +652,36 @@ Shutdown:
    - Grafana dashboards
    - Alerting on anomalies
 
+6. **Rule UI Builder**: Web interface for non-technical users
+   - Visual rule creation without API calls
+   - Score threshold recommendations based on historical data
+   - Rule effectiveness analytics
+
+7. **ML Threshold Optimization**: Data-driven threshold suggestions
+   - Analyze historical advancement outcomes
+   - Recommend optimal thresholds per role/interview
+   - A/B testing for rule effectiveness
+
+8. **Multi-Stage Advancement Chains**: Complex workflows
+   - Conditional logic (if score X then skip stage Y)
+   - Parallel interview paths
+   - Custom advancement criteria beyond scores
+
+9. **Approval Workflows**: Human-in-the-loop for edge cases
+   - Slack approval for borderline candidates
+   - Manager override capability
+   - Configurable approval chains
+
 ### Scalability
 
 **Current limitations**:
 - Single-instance scheduler (no distributed lock)
-- Reminder send is sequential (not parallelized)
+- Advancement evaluation is sequential (not parallelized)
 
 **Scaling strategy**:
 1. Horizontal scaling: Multiple API instances (stateless)
 2. Scheduler: Use distributed lock (Redis/PostgreSQL advisory locks)
-3. Reminders: Parallel processing with connection pool
+3. Evaluations: Parallel processing with connection pool for high volume
 
 ## Conclusion
 

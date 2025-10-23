@@ -101,6 +101,48 @@ async def upsert_schedule_with_events(
                 schedule.get("candidateId"),
             )
 
+            # Fetch interview_plan_id and job_id for advancement system
+            try:
+                from app.clients.ashby import fetch_interview_stage_info
+
+                stage_id = schedule.get("interviewStageId")
+                if stage_id:
+                    stage_info = await fetch_interview_stage_info(stage_id)
+                    interview_plan_id = stage_info.get("interviewPlanId")
+
+                    # Extract job_id from first interview event
+                    job_id = None
+                    if schedule.get("interviewEvents"):
+                        first_event = schedule["interviewEvents"][0]
+                        if first_event.get("interview", {}).get("jobId"):
+                            job_id = first_event["interview"]["jobId"]
+
+                    # Update schedule with advancement tracking fields
+                    await conn.execute(
+                        """
+                        UPDATE interview_schedules
+                        SET interview_plan_id = $1, job_id = $2
+                        WHERE schedule_id = $3
+                    """,
+                        interview_plan_id,
+                        job_id,
+                        schedule_id,
+                    )
+
+                    logger.info(
+                        "advancement_fields_updated",
+                        schedule_id=schedule_id,
+                        interview_plan_id=interview_plan_id,
+                        job_id=job_id,
+                    )
+
+            except Exception:
+                logger.warning(
+                    "failed_to_fetch_advancement_fields",
+                    schedule_id=schedule_id,
+                    exc_info=True,
+                )
+
             # Delete existing events (full replace strategy)
             await conn.execute(
                 """
@@ -116,7 +158,9 @@ async def upsert_schedule_with_events(
     logger.info("schedule_updated", schedule_id=schedule_id, status=status)
 
 
-async def insert_event_with_assignments(conn: Any, event: dict[str, Any], schedule_id: str) -> None:
+async def insert_event_with_assignments(
+    conn: Any, event: dict[str, Any], schedule_id: str
+) -> None:
     """
     Insert interview event and associated interviewer assignments.
 

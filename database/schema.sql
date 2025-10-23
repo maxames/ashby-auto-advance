@@ -1,8 +1,8 @@
 -- ============================================
--- Ashby Slack Feedback - Database Schema
--- Version: 1.0
+-- Ashby Auto-Advancement System - Database Schema
+-- Version: 2.0
 -- Description: Complete schema for webhook ingestion
---              and feedback reminder system
+--              and automated candidate advancement
 -- ============================================
 -- Setup: psql $DATABASE_URL -f database/schema.sql
 -- ============================================
@@ -20,11 +20,21 @@ CREATE TABLE IF NOT EXISTS interview_schedules (
     interview_stage_id UUID,
     status TEXT NOT NULL,
     candidate_id TEXT,
-    updated_at TIMESTAMPTZ NOT NULL
+    updated_at TIMESTAMPTZ NOT NULL,
+    job_id UUID,
+    interview_plan_id UUID,
+    last_evaluated_for_advancement_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_interview_schedules_application_id
 ON interview_schedules(application_id);
+
+CREATE INDEX IF NOT EXISTS idx_interview_schedules_job
+ON interview_schedules(job_id)
+WHERE job_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_interview_schedules_evaluation
+ON interview_schedules(status, last_evaluated_for_advancement_at);
 
 -- Interview Definitions (Reference Table)
 CREATE TABLE IF NOT EXISTS interviews (
@@ -169,6 +179,118 @@ CREATE INDEX IF NOT EXISTS idx_feedback_drafts_updated
 ON feedback_drafts(updated_at DESC);
 
 -- ============================================
+-- Auto-Advancement System Tables
+-- ============================================
+
+-- Advancement Rules Configuration
+CREATE TABLE IF NOT EXISTS advancement_rules (
+    rule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_id UUID,
+    interview_plan_id UUID NOT NULL,
+    interview_stage_id UUID NOT NULL,
+    target_stage_id UUID,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE advancement_rules IS 'Configuration for automatic candidate advancement rules';
+COMMENT ON COLUMN advancement_rules.job_id IS 'Optional job filter - NULL means applies to all jobs';
+COMMENT ON COLUMN advancement_rules.target_stage_id IS 'Target stage to advance to - NULL means next sequential stage';
+
+CREATE INDEX IF NOT EXISTS idx_advancement_rules_active
+ON advancement_rules(interview_plan_id, interview_stage_id)
+WHERE is_active;
+
+-- Advancement Rule Requirements
+CREATE TABLE IF NOT EXISTS advancement_rule_requirements (
+    requirement_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES advancement_rules ON DELETE CASCADE,
+    interview_id UUID NOT NULL,
+    score_field_path TEXT NOT NULL,
+    operator TEXT NOT NULL,
+    threshold_value TEXT NOT NULL,
+    is_required BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE advancement_rule_requirements IS 'Defines scoring requirements for advancement rules';
+COMMENT ON COLUMN advancement_rule_requirements.score_field_path IS 'JSON path to score field in feedback submission';
+COMMENT ON COLUMN advancement_rule_requirements.is_required IS 'If false, interview is optional for advancement';
+
+CREATE INDEX IF NOT EXISTS idx_advancement_rule_requirements_rule
+ON advancement_rule_requirements(rule_id);
+
+-- Advancement Rule Actions
+CREATE TABLE IF NOT EXISTS advancement_rule_actions (
+    action_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rule_id UUID NOT NULL REFERENCES advancement_rules ON DELETE CASCADE,
+    action_type TEXT NOT NULL,
+    action_config JSONB,
+    execution_order INT DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE advancement_rule_actions IS 'Actions to execute when rule conditions are met';
+COMMENT ON COLUMN advancement_rule_actions.action_config IS 'JSON configuration for action (e.g., archive_reason_id)';
+
+CREATE INDEX IF NOT EXISTS idx_advancement_rule_actions_rule
+ON advancement_rule_actions(rule_id, execution_order);
+
+-- Feedback Submissions from Ashby API
+CREATE TABLE IF NOT EXISTS feedback_submissions (
+    feedback_id UUID PRIMARY KEY,
+    application_id UUID NOT NULL,
+    event_id UUID NOT NULL REFERENCES interview_events ON DELETE CASCADE,
+    interviewer_id UUID NOT NULL,
+    interview_id UUID NOT NULL,
+    submitted_at TIMESTAMPTZ NOT NULL,
+    submitted_values JSONB NOT NULL,
+    processed_for_advancement_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE feedback_submissions IS 'Feedback submissions synced from Ashby API';
+COMMENT ON COLUMN feedback_submissions.processed_for_advancement_at IS 'Timestamp when feedback was processed for advancement decision';
+
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_event
+ON feedback_submissions(event_id);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_application
+ON feedback_submissions(application_id);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_pending
+ON feedback_submissions(application_id, processed_for_advancement_at)
+WHERE processed_for_advancement_at IS NULL;
+
+-- Advancement Execution Audit Trail
+CREATE TABLE IF NOT EXISTS advancement_executions (
+    execution_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    schedule_id UUID NOT NULL REFERENCES interview_schedules ON DELETE CASCADE,
+    application_id UUID NOT NULL,
+    rule_id UUID REFERENCES advancement_rules,
+    from_stage_id UUID,
+    to_stage_id UUID,
+    execution_status TEXT NOT NULL,
+    failure_reason TEXT,
+    evaluation_results JSONB,
+    executed_at TIMESTAMPTZ DEFAULT NOW(),
+    executed_by TEXT DEFAULT 'system'
+);
+
+COMMENT ON TABLE advancement_executions IS 'Complete audit trail of all advancement decisions and executions';
+COMMENT ON COLUMN advancement_executions.evaluation_results IS 'Detailed JSON of rule evaluation for debugging';
+
+CREATE INDEX IF NOT EXISTS idx_advancement_executions_schedule
+ON advancement_executions(schedule_id, executed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_advancement_executions_status
+ON advancement_executions(execution_status, executed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_advancement_executions_application
+ON advancement_executions(application_id, executed_at DESC);
+
+-- ============================================
 -- Migration Tracking
 -- ============================================
 
@@ -179,9 +301,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Record initial schema
+-- Record schema versions
 INSERT INTO schema_migrations (version, name, description)
-VALUES (1, 'initial_schema', 'Core webhook tables + feedback app tables')
+VALUES
+    (1, 'initial_schema', 'Core webhook tables + feedback app tables'),
+    (2, 'advancement_system', 'Add advancement automation tables and tracking fields')
 ON CONFLICT (version) DO NOTHING;
 
 COMMIT;

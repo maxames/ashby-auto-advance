@@ -357,7 +357,22 @@ SLACK_SIGNING_SECRET=your_signing_secret
 
 # Application
 LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
+
+# Advancement System (v2.0)
+ADVANCEMENT_DRY_RUN_MODE=true  # Start in dry-run mode for testing!
+ADVANCEMENT_FEEDBACK_TIMEOUT_DAYS=7
+ADVANCEMENT_FEEDBACK_MIN_WAIT_MINUTES=30
+ADMIN_SLACK_CHANNEL_ID=C123ABC456  # Get from Slack channel details
+DEFAULT_ARCHIVE_REASON_ID=<uuid-from-ashby>  # REQUIRED - See note below
 ```
+
+**Getting DEFAULT_ARCHIVE_REASON_ID:**
+
+1. Log in to Ashby
+2. Go to **Settings → Archive Reasons**
+3. Find or create a reason (e.g., "Did not meet hiring bar")
+4. Copy the UUID from the URL or API response
+5. Set it in your environment variables
 
 ### Generating Secrets
 
@@ -408,14 +423,15 @@ Use this same secret in both your `.env` file and Ashby webhook configuration.
 3. Set **Request URL** to: `https://your-domain.com/slack/interactions`
 4. Click **Save Changes**
 
+**Note**: Interactivity is now only used for rejection button clicks (no longer feedback modals).
+
 ### 5. Verify Scopes
 
 Ensure your app has these scopes under **OAuth & Permissions**:
 
-- `chat:write` - Send messages to users
+- `chat:write` - Send messages to channels and users
 - `users:read` - Read user information
-- `users:read.email` - Read user email addresses
-- `files.remote:write` - Register remote files (for resume links)
+- `users:read.email` - Read user email addresses (for Slack user sync)
 
 ---
 
@@ -473,6 +489,7 @@ Check application logs for successful startup:
 application_starting
 database_connected
 scheduler_setup
+scheduler_configured (jobs=5)
 running_initial_syncs
 sync_feedback_forms_complete
 sync_interviews_complete
@@ -486,9 +503,11 @@ Connect to database and verify tables exist:
 ```bash
 psql $DATABASE_URL
 
-\dt  -- List tables
+\dt  -- List all tables
+\dt advancement*  -- Should show 3 advancement tables
 SELECT COUNT(*) FROM slack_users;  -- Should show Slack users
 SELECT COUNT(*) FROM feedback_form_definitions;  -- Should show forms
+SELECT * FROM schema_migrations;  -- Should show versions 1 and 2
 ```
 
 ### 4. Test Webhook
@@ -500,10 +519,50 @@ Send a test webhook from Ashby (see above) and verify:
 
 ### 5. Monitor Scheduler
 
-Watch logs for scheduled jobs (every 5 minutes):
+Watch logs for scheduled jobs:
 ```
-reminder_check_started
-reminders_checked (count=X)
+# Every 30 minutes:
+feedback_sync_started
+advancement_evaluations_started
+
+# Every 6-12 hours:
+sync_feedback_forms
+sync_interviews
+sync_slack_users
+```
+
+### 6. Verify Advancement System
+
+Create a test rule and trigger evaluation:
+
+```bash
+# Create test rule via API
+curl -X POST https://your-domain.com/admin/create-advancement-rule \
+  -H "Content-Type: application/json" \
+  -d '{
+    "interview_plan_id": "your-plan-uuid",
+    "interview_stage_id": "your-stage-uuid",
+    "target_stage_id": null,
+    "requirements": [{
+      "interview_id": "your-interview-uuid",
+      "score_field_path": "overall_score",
+      "operator": ">=",
+      "threshold_value": "3",
+      "is_required": true
+    }],
+    "actions": [{
+      "action_type": "advance_stage",
+      "execution_order": 1
+    }]
+  }'
+
+# Check advancement stats
+curl https://your-domain.com/admin/advancement-stats
+
+# Query advancement tables
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM advancement_rules WHERE is_active = true;"
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM feedback_submissions;"
+psql $DATABASE_URL -c "SELECT * FROM advancement_executions ORDER BY executed_at DESC LIMIT 5;"
 ```
 
 ---
@@ -522,6 +581,18 @@ docker-compose logs -f app
 **Manual Deployment**:
 ```bash
 sudo journalctl -u ashby-feedback -f
+```
+
+**Watch Advancement Activity**:
+```bash
+# Watch advancement evaluations
+docker logs -f app | grep advancement
+
+# Watch feedback sync
+docker logs -f app | grep feedback_sync
+
+# Watch for errors
+docker logs -f app | grep ERROR
 ```
 
 ### Health Checks
@@ -567,7 +638,25 @@ pip install -r requirements.txt
 
 **Current approach**: Manual SQL changes + tracking table.
 
-When you need to change the schema:
+**Schema Version 2.0** - Advancement System:
+
+For **testing** (drop and recreate):
+```bash
+psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+psql $DATABASE_URL -f database/schema.sql
+```
+
+For **production** (migration from v1.0):
+```bash
+# Apply advancement tables without data loss
+psql $DATABASE_URL -f database/add_advancement_tables.sql
+
+# Verify migration
+psql $DATABASE_URL -c "SELECT * FROM schema_migrations ORDER BY version;"
+# Should show versions 1 and 2
+```
+
+When you need to change the schema in the future:
 
 1. Apply the change:
    ```bash
@@ -577,7 +666,7 @@ When you need to change the schema:
 2. Record it:
    ```bash
    psql $DATABASE_URL -c "INSERT INTO schema_migrations (version, name, description)
-   VALUES (2, 'add_archived_at', 'Track archived interviews');"
+   VALUES (3, 'add_archived_at', 'Track archived interviews');"
    ```
 
 3. Update `database/schema.sql` so fresh installs include it
@@ -626,19 +715,42 @@ env | grep -E 'DATABASE_URL|ASHBY|SLACK'
 - Must return 2xx status code
 - Must be HTTPS in production
 
-### Reminders Not Sending
+### Advancement Not Working
 
-**Symptoms**: Logs show no reminders being sent
+**Symptoms**: Candidates not being advanced automatically
 
 **Check**:
-1. Scheduler Running: Look for `reminder_check_started` in logs every 5 min
-2. Slack Users Synced: `SELECT COUNT(*) FROM slack_users`
-3. Interviews Exist: `SELECT COUNT(*) FROM interview_events WHERE start_time > NOW()`
-4. Time Window: Reminders only send 4-20 minutes before interview
+1. **Dry-run mode enabled**: `ADVANCEMENT_DRY_RUN_MODE=true` prevents real advancements
+   - Check logs for `DRY_RUN: Would advance candidate`
+   - Set to `false` to enable real advancements
+
+2. **Rules exist**:
+   ```sql
+   SELECT * FROM advancement_rules WHERE is_active = true;
+   ```
+
+3. **Schedules have interview_plan_id**:
+   ```sql
+   SELECT COUNT(*) FROM interview_schedules WHERE interview_plan_id IS NULL;
+   ```
+   If many are NULL, webhook processing may be failing to fetch it
+
+4. **Feedback syncing**:
+   ```sql
+   SELECT COUNT(*), MAX(created_at) FROM feedback_submissions;
+   ```
+   Look for `feedback_sync_started` in logs every 30 min
+
+5. **Evaluation running**:
+   Look for `advancement_evaluations_started` in logs every 30 min
 
 **Manual Trigger**:
 ```bash
-curl -X POST https://your-domain.com/admin/sync-slack-users
+# Test specific schedule
+curl -X POST https://your-domain.com/admin/trigger-advancement-evaluation?schedule_id=<uuid>
+
+# Check what's blocking
+curl https://your-domain.com/admin/advancement-stats
 ```
 
 ### Database Connection Pool Exhausted
