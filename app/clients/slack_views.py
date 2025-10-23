@@ -98,16 +98,12 @@ def build_rejection_notification(
             scores_text += f"• {field_name}: {value}\n"
 
         feedback_text = f"*{interview_title}*\n{scores_text}"
-        blocks.append(
-            {"type": "section", "text": {"type": "mrkdwn", "text": feedback_text}}
-        )
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": feedback_text}})
 
     blocks.append({"type": "divider"})
 
     # Action Button - Send Rejection
-    button_metadata = json.dumps(
-        {"application_id": application_id, "action": "send_rejection"}
-    )
+    button_metadata = json.dumps({"application_id": application_id, "action": "send_rejection"})
 
     blocks.append(
         {

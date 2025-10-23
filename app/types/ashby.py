@@ -104,9 +104,7 @@ class FeedbackSubmissionTD(TypedDict):
     interviewEventId: str
     submittedAt: str  # ISO timestamp
     submittedByUserId: str
-    submittedValues: dict[
-        str, str | int | bool | dict[str, str | int] | list[str] | None
-    ]
+    submittedValues: dict[str, str | int | bool | dict[str, str | int] | list[str] | None]
 
 
 class InterviewStageTD(TypedDict):

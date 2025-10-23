@@ -83,11 +83,7 @@ async def create_advancement_rule(
         """,
             rule_id,
             action["action_type"],
-            (
-                json.dumps(action.get("action_config"))
-                if action.get("action_config")
-                else None
-            ),
+            (json.dumps(action.get("action_config")) if action.get("action_config") else None),
             action.get("execution_order", 1),
         )
         action_ids.append(str(action_id))
@@ -128,9 +124,7 @@ async def get_advancement_statistics() -> dict[str, Any]:
     """
     )
 
-    status_counts = {
-        row["execution_status"]: row["count"] for row in status_counts_rows
-    }
+    status_counts = {row["execution_status"]: row["count"] for row in status_counts_rows}
 
     # Count pending evaluations
     pending_evaluations = await db.fetchval(

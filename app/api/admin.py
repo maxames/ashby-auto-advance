@@ -107,9 +107,7 @@ async def create_advancement_rule(rule: AdvancementRuleCreate) -> dict[str, Any]
     Returns:
         Created rule with IDs
     """
-    logger.info(
-        "admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id
-    )
+    logger.info("admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id)
 
     # Convert Pydantic models to dicts for service layer
     requirements = [req.model_dump() for req in rule.requirements]

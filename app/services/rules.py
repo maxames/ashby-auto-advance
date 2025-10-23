@@ -113,9 +113,7 @@ async def find_matching_rule(
         "job_id": str(row["job_id"]) if row["job_id"] else None,
         "interview_plan_id": str(row["interview_plan_id"]),
         "interview_stage_id": str(row["interview_stage_id"]),
-        "target_stage_id": (
-            str(row["target_stage_id"]) if row["target_stage_id"] else None
-        ),
+        "target_stage_id": (str(row["target_stage_id"]) if row["target_stage_id"] else None),
         "requirements": [dict(r) for r in requirements],
         "actions": [dict(a) for a in actions],
     }
@@ -315,9 +313,7 @@ async def evaluate_rule_requirements(
                 "requirement_id": requirement_id,
                 "interview_id": interview_id,
                 "passed": interview_passed,
-                "blocking_reason": (
-                    None if interview_passed else "score_threshold_not_met"
-                ),
+                "blocking_reason": (None if interview_passed else "score_threshold_not_met"),
                 "interviewer_results": interviewer_results,
             }
         )
@@ -417,9 +413,7 @@ async def get_target_stage_for_rule(
     target_stage_id = row["target_stage_id"]
 
     if target_stage_id:
-        logger.info(
-            "explicit_target_stage", rule_id=rule_id, target_stage_id=target_stage_id
-        )
+        logger.info("explicit_target_stage", rule_id=rule_id, target_stage_id=target_stage_id)
         return str(target_stage_id)
 
     # Fetch all stages for plan

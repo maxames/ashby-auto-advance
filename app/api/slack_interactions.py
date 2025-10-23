@@ -45,9 +45,7 @@ async def handle_slack_interactions(request: Request) -> Response:
     return Response(status_code=200)
 
 
-async def handle_rejection_button(
-    payload: dict[str, Any], action: dict[str, Any]
-) -> None:
+async def handle_rejection_button(payload: dict[str, Any], action: dict[str, Any]) -> None:
     """
     Handle rejection button click - archive candidate and send rejection email.
 

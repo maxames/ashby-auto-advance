@@ -129,9 +129,7 @@ async def sync_interviews() -> None:
 
     try:
         while True:
-            response = await ashby_client.post(
-                "interview.list", {"cursor": cursor, "limit": 100}
-            )
+            response = await ashby_client.post("interview.list", {"cursor": cursor, "limit": 100})
 
             if not response["success"]:
                 logger.error("interview_sync_failed", error=response.get("error"))

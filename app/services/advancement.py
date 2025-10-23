@@ -169,9 +169,7 @@ async def evaluate_schedule_for_advancement(schedule_id: str) -> dict[str, Any]:
         }
 
     # Evaluate rule requirements
-    evaluation_results = await evaluate_rule_requirements(
-        rule_id, schedule_id, feedback_list
-    )
+    evaluation_results = await evaluate_rule_requirements(rule_id, schedule_id, feedback_list)
 
     if not evaluation_results["all_passed"]:
         return {
@@ -471,9 +469,7 @@ async def process_advancement_evaluations() -> None:
                     await send_rejection_notification(
                         application_id=application_id,
                         schedule_id=schedule_id,
-                        feedback_data=[
-                            {k: v for k, v in f.items()} for f in feedback_submissions
-                        ],
+                        feedback_data=[{k: v for k, v in f.items()} for f in feedback_submissions],
                     )
 
                     rejected_count += 1
@@ -558,7 +554,9 @@ async def send_rejection_notification(
         candidate = await fetch_candidate_info(candidate_id)
 
         # Build Ashby profile URL
-        ashby_profile_url = f"https://app.ashbyhq.com/candidate-searches/new/right-side/candidates/{candidate_id}"
+        ashby_profile_url = (
+            f"https://app.ashbyhq.com/candidate-searches/new/right-side/candidates/{candidate_id}"
+        )
 
         # Get job title from Ashby
         job_title = "Position"  # Default fallback
@@ -626,9 +624,7 @@ async def send_rejection_notification(
         # Don't raise - notification failure shouldn't block evaluation
 
 
-async def handle_advancement_error(
-    schedule_id: str, application_id: str, error: Exception
-) -> None:
+async def handle_advancement_error(schedule_id: str, application_id: str, error: Exception) -> None:
     """
     Handle advancement execution errors.
 
@@ -714,9 +710,7 @@ async def execute_rejection(application_id: str) -> dict[str, Any]:
         archive_reason_id = settings.default_archive_reason_id
 
         if not archive_reason_id:
-            raise ValueError(
-                "DEFAULT_ARCHIVE_REASON_ID must be configured to execute rejections"
-            )
+            raise ValueError("DEFAULT_ARCHIVE_REASON_ID must be configured to execute rejections")
 
         await archive_candidate(
             application_id=application_id,

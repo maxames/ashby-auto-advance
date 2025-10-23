@@ -36,18 +36,14 @@ class SlackClient:
             Exception: If message send fails
         """
         try:
-            response = await self.client.chat_postMessage(
-                channel=user_id, text=text, blocks=blocks
-            )
+            response = await self.client.chat_postMessage(channel=user_id, text=text, blocks=blocks)
             logger.info("slack_dm_sent", user_id=user_id)
             return response
         except Exception as e:
             logger.error("slack_dm_failed", user_id=user_id, error=str(e))
             raise
 
-    async def open_modal(
-        self, trigger_id: str, view: dict[str, Any]
-    ) -> AsyncSlackResponse:
+    async def open_modal(self, trigger_id: str, view: dict[str, Any]) -> AsyncSlackResponse:
         """
         Open a modal view.
 
@@ -60,9 +56,7 @@ class SlackClient:
         """
         return await self.client.views_open(trigger_id=trigger_id, view=view)
 
-    async def register_remote_file(
-        self, external_id: str, url: str, title: str
-    ) -> str | None:
+    async def register_remote_file(self, external_id: str, url: str, title: str) -> str | None:
         """
         Register remote file with Slack.
 
@@ -104,9 +98,7 @@ class SlackClient:
             Exception: If message send fails
         """
         try:
-            response = await self.client.chat_postMessage(
-                channel=channel, text=text, blocks=blocks
-            )
+            response = await self.client.chat_postMessage(channel=channel, text=text, blocks=blocks)
             logger.info("slack_message_sent", channel=channel)
             return response
         except Exception as e:

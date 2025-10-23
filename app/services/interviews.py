@@ -174,9 +174,7 @@ async def upsert_schedule_with_events(
     logger.info("schedule_updated", schedule_id=schedule_id, status=status)
 
 
-async def insert_event_with_assignments(
-    conn: Any, event: dict[str, Any], schedule_id: str
-) -> None:
+async def insert_event_with_assignments(conn: Any, event: dict[str, Any], schedule_id: str) -> None:
     """
     Insert interview event and associated interviewer assignments.
 

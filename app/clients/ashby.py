@@ -56,17 +56,13 @@ class AshbyClient:
         logger.info("ashby_api_request", endpoint=endpoint)
 
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
-            async with session.post(
-                url, json=json_data, headers=self.headers
-            ) as response:
+            async with session.post(url, json=json_data, headers=self.headers) as response:
                 response.raise_for_status()
                 result: dict[str, Any] = await response.json()
 
                 if not result.get("success"):
                     # Extract error from multiple possible fields
-                    error_msg = (
-                        result.get("errors") or result.get("error") or "Unknown error"
-                    )
+                    error_msg = result.get("errors") or result.get("error") or "Unknown error"
                     error_info = result.get("errorInfo", {})
 
                     logger.error(
@@ -74,24 +70,16 @@ class AshbyClient:
                         endpoint=endpoint,
                         errors=error_msg,
                         error_code=(
-                            error_info.get("code")
-                            if isinstance(error_info, dict)
-                            else None
+                            error_info.get("code") if isinstance(error_info, dict) else None
                         ),
                         request_id=(
-                            error_info.get("requestId")
-                            if isinstance(error_info, dict)
-                            else None
+                            error_info.get("requestId") if isinstance(error_info, dict) else None
                         ),
                     )
 
                     # Raise exception to stop execution
-                    error_display = (
-                        error_msg if isinstance(error_msg, str) else str(error_msg)
-                    )
-                    raise Exception(
-                        f"Ashby API request failed ({endpoint}): {error_display}"
-                    )
+                    error_display = error_msg if isinstance(error_msg, str) else str(error_msg)
+                    raise Exception(f"Ashby API request failed ({endpoint}): {error_display}")
 
                 return result
 
@@ -116,9 +104,7 @@ async def fetch_candidate_info(candidate_id: str) -> CandidateTD:
     response = await ashby_client.post("candidate.info", {"id": candidate_id})
 
     if not response["success"]:
-        raise Exception(
-            f"Ashby API request failed (candidate.info): {response.get('error')}"
-        )
+        raise Exception(f"Ashby API request failed (candidate.info): {response.get('error')}")
 
     data = response["results"]
 
@@ -242,14 +228,10 @@ async def fetch_interview_stage_info(stage_id: str) -> InterviewStageTD:
     Raises:
         Exception: If API call fails
     """
-    response = await ashby_client.post(
-        "interviewStage.info", {"interviewStageId": stage_id}
-    )
+    response = await ashby_client.post("interviewStage.info", {"interviewStageId": stage_id})
 
     if not response["success"]:
-        raise Exception(
-            f"Ashby API request failed (interviewStage.info): {response.get('error')}"
-        )
+        raise Exception(f"Ashby API request failed (interviewStage.info): {response.get('error')}")
 
     return cast(InterviewStageTD, response["results"])
 
@@ -277,9 +259,7 @@ async def list_interview_stages_for_plan(
     )
 
     if not response["success"]:
-        raise Exception(
-            f"Ashby API request failed (interviewStage.list): {response.get('error')}"
-        )
+        raise Exception(f"Ashby API request failed (interviewStage.list): {response.get('error')}")
 
     stages = cast(list[InterviewStageTD], response.get("results", []))
 
@@ -366,8 +346,7 @@ async def archive_candidate(
 
     if not response["success"]:
         raise Exception(
-            f"Ashby API request failed (application.changeStage/archive): "
-            f"{response.get('error')}"
+            f"Ashby API request failed (application.changeStage/archive): {response.get('error')}"
         )
 
     logger.info(
