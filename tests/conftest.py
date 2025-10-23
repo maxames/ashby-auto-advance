@@ -22,6 +22,9 @@ os.environ.setdefault("SLACK_BOT_TOKEN", "xoxb-test-token")
 os.environ.setdefault("SLACK_SIGNING_SECRET", "test_signing_secret")
 os.environ.setdefault("DATABASE_URL", "postgresql://localhost:5432/ashby_feedback_test")
 os.environ.setdefault("LOG_LEVEL", "INFO")
+os.environ.setdefault(
+    "DEFAULT_ARCHIVE_REASON_ID", "00000000-0000-0000-0000-000000000000"
+)
 
 
 @pytest_asyncio.fixture

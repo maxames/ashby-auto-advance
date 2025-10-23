@@ -14,7 +14,12 @@ from app.api.webhooks import limiter
 from app.api.webhooks import router as webhook_router
 from app.core.database import db
 from app.core.logging import logger, setup_logging
-from app.services.scheduler import setup_scheduler, shutdown_scheduler, start_scheduler
+from app.services.scheduler import (
+    scheduler,
+    setup_scheduler,
+    shutdown_scheduler,
+    start_scheduler,
+)
 from app.services.sync import sync_feedback_forms, sync_interviews, sync_slack_users
 
 # Configure logging
@@ -27,15 +32,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     logger.info("application_starting")
     await db.connect()
-    setup_scheduler()
-    start_scheduler()
 
+    # Run initial sync BEFORE starting scheduler
     try:
         await sync_feedback_forms()
         await sync_interviews()
         await sync_slack_users()
     except Exception:
         logger.exception("initial_sync_failed")
+
+    # Now start scheduler with fresh data
+    setup_scheduler()
+    start_scheduler()
 
     logger.info("application_ready")
 
@@ -92,6 +100,7 @@ async def health_check() -> dict[str, Any]:
         return {
             "status": "healthy",
             "database": "connected",
+            "scheduler": "running" if scheduler.running else "stopped",
             "pool": {
                 "size": pool_size,
                 "free": pool_free,

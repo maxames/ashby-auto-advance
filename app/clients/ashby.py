@@ -27,6 +27,7 @@ class AshbyClient:
         """Initialize Ashby client with API key from settings."""
         self.api_key = settings.ashby_api_key
         self.base_url = "https://api.ashbyhq.com"
+        self.timeout = aiohttp.ClientTimeout(total=30)  # 30 second timeout
 
         # Basic auth: base64(api_key:)
         credentials = base64.b64encode(f"{self.api_key}:".encode()).decode()
@@ -54,7 +55,7 @@ class AshbyClient:
 
         logger.info("ashby_api_request", endpoint=endpoint)
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
             async with session.post(
                 url, json=json_data, headers=self.headers
             ) as response:
@@ -115,7 +116,9 @@ async def fetch_candidate_info(candidate_id: str) -> CandidateTD:
     response = await ashby_client.post("candidate.info", {"id": candidate_id})
 
     if not response["success"]:
-        raise Exception(f"Failed to fetch candidate info: {response.get('error')}")
+        raise Exception(
+            f"Ashby API request failed (candidate.info): {response.get('error')}"
+        )
 
     data = response["results"]
 
@@ -142,7 +145,7 @@ async def fetch_job_info(job_id: str) -> JobInfoTD:
     response = await ashby_client.post("job.info", {"id": job_id})
 
     if not response["success"]:
-        raise Exception(f"Failed to fetch job info: {response.get('error')}")
+        raise Exception(f"Ashby API request failed (job.info): {response.get('error')}")
 
     data = response["results"]
 
@@ -205,7 +208,7 @@ async def fetch_application_feedback(application_id: str) -> list[FeedbackSubmis
 
         if not response["success"]:
             raise Exception(
-                f"Failed to fetch application feedback: {response.get('error')}"
+                f"Ashby API request failed (applicationFeedback.list): {response.get('error')}"
             )
 
         results = response.get("results", [])
@@ -245,7 +248,7 @@ async def fetch_interview_stage_info(stage_id: str) -> InterviewStageTD:
 
     if not response["success"]:
         raise Exception(
-            f"Failed to fetch interview stage info: {response.get('error')}"
+            f"Ashby API request failed (interviewStage.info): {response.get('error')}"
         )
 
     return cast(InterviewStageTD, response["results"])
@@ -274,7 +277,9 @@ async def list_interview_stages_for_plan(
     )
 
     if not response["success"]:
-        raise Exception(f"Failed to list interview stages: {response.get('error')}")
+        raise Exception(
+            f"Ashby API request failed (interviewStage.list): {response.get('error')}"
+        )
 
     stages = cast(list[InterviewStageTD], response.get("results", []))
 
@@ -315,7 +320,9 @@ async def advance_candidate_stage(
     )
 
     if not response["success"]:
-        raise Exception(f"Failed to advance candidate stage: {response.get('error')}")
+        raise Exception(
+            f"Ashby API request failed (application.changeStage): {response.get('error')}"
+        )
 
     logger.info(
         "candidate_advanced",
@@ -358,7 +365,10 @@ async def archive_candidate(
     response = await ashby_client.post("application.changeStage", request_data)
 
     if not response["success"]:
-        raise Exception(f"Failed to archive candidate: {response.get('error')}")
+        raise Exception(
+            f"Ashby API request failed (application.changeStage/archive): "
+            f"{response.get('error')}"
+        )
 
     logger.info(
         "candidate_archived",

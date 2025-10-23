@@ -36,6 +36,12 @@ WHERE job_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_interview_schedules_evaluation
 ON interview_schedules(status, last_evaluated_for_advancement_at);
 
+-- Composite index for advancement evaluation queries
+CREATE INDEX IF NOT EXISTS idx_interview_schedules_advancement_ready
+ON interview_schedules(status, last_evaluated_for_advancement_at, updated_at)
+WHERE status IN ('WaitingOnFeedback', 'Complete')
+  AND interview_plan_id IS NOT NULL;
+
 -- Interview Definitions (Reference Table)
 CREATE TABLE IF NOT EXISTS interviews (
     interview_id UUID PRIMARY KEY,

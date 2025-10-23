@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, cast
 
+import asyncpg
 from structlog import get_logger
 
 from app.clients.ashby import ashby_client
@@ -14,6 +15,53 @@ from app.types.ashby import FeedbackFormTD, JobInfoTD
 from app.utils.time import is_stale
 
 logger = get_logger()
+
+
+async def _upsert_interview(
+    interview_data: dict[str, Any],
+    conn: asyncpg.Connection | None = None,
+) -> None:
+    """
+    Upsert interview definition into database.
+
+    Args:
+        interview_data: Interview data from Ashby API
+        conn: Optional database connection (uses pool if None)
+    """
+    query = """
+        INSERT INTO interviews
+        (interview_id, title, external_title, is_archived, is_debrief,
+         instructions_html, instructions_plain, job_id,
+         feedback_form_definition_id, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        ON CONFLICT (interview_id) DO UPDATE SET
+            title = EXCLUDED.title,
+            external_title = EXCLUDED.external_title,
+            is_archived = EXCLUDED.is_archived,
+            is_debrief = EXCLUDED.is_debrief,
+            instructions_html = EXCLUDED.instructions_html,
+            instructions_plain = EXCLUDED.instructions_plain,
+            job_id = EXCLUDED.job_id,
+            feedback_form_definition_id = EXCLUDED.feedback_form_definition_id,
+            updated_at = NOW()
+    """
+
+    args = (
+        interview_data["id"],
+        interview_data.get("title"),
+        interview_data.get("externalTitle"),
+        interview_data.get("isArchived", False),
+        interview_data.get("isDebrief", False),
+        interview_data.get("instructionsHtml"),
+        interview_data.get("instructionsPlain"),
+        interview_data.get("jobId"),
+        interview_data.get("feedbackFormDefinitionId"),
+    )
+
+    if conn:
+        await conn.execute(query, *args)
+    else:
+        await db.execute(query, *args)
 
 
 async def sync_feedback_forms() -> None:
@@ -81,42 +129,16 @@ async def sync_interviews() -> None:
 
     try:
         while True:
-            response = await ashby_client.post("interview.list", {"cursor": cursor, "limit": 100})
+            response = await ashby_client.post(
+                "interview.list", {"cursor": cursor, "limit": 100}
+            )
 
             if not response["success"]:
                 logger.error("interview_sync_failed", error=response.get("error"))
                 break
 
             for interview in response["results"]:
-                interview_dict: dict[str, Any] = interview
-                await db.execute(
-                    """
-                    INSERT INTO interviews
-                    (interview_id, title, external_title, is_archived, is_debrief,
-                     instructions_html, instructions_plain, job_id,
-                     feedback_form_definition_id, updated_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-                    ON CONFLICT (interview_id) DO UPDATE SET
-                        title = EXCLUDED.title,
-                        external_title = EXCLUDED.external_title,
-                        is_archived = EXCLUDED.is_archived,
-                        is_debrief = EXCLUDED.is_debrief,
-                        instructions_html = EXCLUDED.instructions_html,
-                        instructions_plain = EXCLUDED.instructions_plain,
-                        job_id = EXCLUDED.job_id,
-                        feedback_form_definition_id = EXCLUDED.feedback_form_definition_id,
-                        updated_at = NOW()
-                """,
-                    interview_dict["id"],
-                    interview_dict.get("title"),
-                    interview_dict.get("externalTitle"),
-                    interview_dict.get("isArchived", False),
-                    interview_dict.get("isDebrief", False),
-                    interview_dict.get("instructionsHtml"),
-                    interview_dict.get("instructionsPlain"),
-                    interview_dict.get("jobId"),
-                    interview_dict.get("feedbackFormDefinitionId"),
-                )
+                await _upsert_interview(interview)
                 interviews_synced += 1
 
             if not response.get("moreDataAvailable"):
@@ -192,35 +214,7 @@ async def fetch_and_update_interview(interview_id: str) -> None:
         response = await ashby_client.post("interview.info", {"id": interview_id})
 
         if response["success"]:
-            interview: dict[str, Any] = response["results"]
-            await db.execute(
-                """
-                INSERT INTO interviews
-                (interview_id, title, external_title, is_archived, is_debrief,
-                 instructions_html, instructions_plain, job_id,
-                 feedback_form_definition_id, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-                ON CONFLICT (interview_id) DO UPDATE SET
-                    title = EXCLUDED.title,
-                    external_title = EXCLUDED.external_title,
-                    is_archived = EXCLUDED.is_archived,
-                    is_debrief = EXCLUDED.is_debrief,
-                    instructions_html = EXCLUDED.instructions_html,
-                    instructions_plain = EXCLUDED.instructions_plain,
-                    job_id = EXCLUDED.job_id,
-                    feedback_form_definition_id = EXCLUDED.feedback_form_definition_id,
-                    updated_at = NOW()
-            """,
-                interview["id"],
-                interview.get("title"),
-                interview.get("externalTitle"),
-                interview.get("isArchived", False),
-                interview.get("isDebrief", False),
-                interview.get("instructionsHtml"),
-                interview.get("instructionsPlain"),
-                interview.get("jobId"),
-                interview.get("feedbackFormDefinitionId"),
-            )
+            await _upsert_interview(response["results"])
             logger.info("interview_fetched_and_updated", interview_id=interview_id)
         else:
             logger.warning(

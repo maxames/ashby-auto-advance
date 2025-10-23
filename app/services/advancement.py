@@ -40,7 +40,7 @@ async def get_schedules_ready_for_evaluation() -> list[dict[str, Any]]:
     timeout_days = settings.advancement_feedback_timeout_days
 
     rows = await db.fetch(
-        f"""
+        """
         SELECT
             s.schedule_id,
             s.application_id,
@@ -57,10 +57,11 @@ async def get_schedules_ready_for_evaluation() -> list[dict[str, Any]]:
               s.last_evaluated_for_advancement_at IS NULL
               OR s.updated_at > s.last_evaluated_for_advancement_at
           )
-          AND s.updated_at > NOW() - INTERVAL '{timeout_days} days'
+          AND s.updated_at > NOW() - INTERVAL '1 day' * $1
           AND s.interview_plan_id IS NOT NULL
         ORDER BY s.updated_at ASC
-    """
+    """,
+        timeout_days,
     )
 
     logger.info("schedules_ready_for_evaluation", count=len(rows))
@@ -150,14 +151,15 @@ async def evaluate_schedule_for_advancement(schedule_id: str) -> dict[str, Any]:
     min_wait_minutes = settings.advancement_feedback_min_wait_minutes
 
     recent_feedback = await db.fetchval(
-        f"""
+        """
         SELECT COUNT(*)
         FROM feedback_submissions f
         INNER JOIN interview_events e ON e.event_id = f.event_id
         WHERE e.schedule_id = $1
-          AND f.submitted_at > NOW() - INTERVAL '{min_wait_minutes} minutes'
+          AND f.submitted_at > NOW() - INTERVAL '1 minute' * $2
     """,
         schedule_id,
+        min_wait_minutes,
     )
 
     if recent_feedback > 0:

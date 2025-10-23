@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
 from structlog import get_logger
 
 from app.core.database import db
+from app.services.sync import _upsert_interview
 
 logger = get_logger()
 
@@ -101,47 +103,61 @@ async def upsert_schedule_with_events(
                 schedule.get("candidateId"),
             )
 
-            # Fetch interview_plan_id and job_id for advancement system
-            try:
-                from app.clients.ashby import fetch_interview_stage_info
+            # Fetch interview_plan_id and job_id with retry
+            interview_plan_id = None
+            job_id = None
+            stage_id = schedule.get("interviewStageId")
 
-                stage_id = schedule.get("interviewStageId")
-                if stage_id:
-                    stage_info = await fetch_interview_stage_info(stage_id)
-                    interview_plan_id = stage_info.get("interviewPlanId")
+            if stage_id:
+                for attempt in range(1, 4):  # 3 attempts
+                    try:
+                        from app.clients.ashby import fetch_interview_stage_info
 
-                    # Extract job_id from first interview event
-                    job_id = None
-                    if schedule.get("interviewEvents"):
-                        first_event = schedule["interviewEvents"][0]
-                        if first_event.get("interview", {}).get("jobId"):
-                            job_id = first_event["interview"]["jobId"]
+                        stage_info = await fetch_interview_stage_info(stage_id)
+                        interview_plan_id = stage_info.get("interviewPlanId")
 
-                    # Update schedule with advancement tracking fields
-                    await conn.execute(
-                        """
-                        UPDATE interview_schedules
-                        SET interview_plan_id = $1, job_id = $2
-                        WHERE schedule_id = $3
-                    """,
-                        interview_plan_id,
-                        job_id,
-                        schedule_id,
-                    )
+                        # Extract job_id from first interview event
+                        if schedule.get("interviewEvents"):
+                            first_event = schedule["interviewEvents"][0]
+                            if first_event.get("interview", {}).get("jobId"):
+                                job_id = first_event["interview"]["jobId"]
 
-                    logger.info(
-                        "advancement_fields_updated",
-                        schedule_id=schedule_id,
-                        interview_plan_id=interview_plan_id,
-                        job_id=job_id,
-                    )
+                        # Success - update schedule
+                        await conn.execute(
+                            """
+                            UPDATE interview_schedules
+                            SET interview_plan_id = $1, job_id = $2
+                            WHERE schedule_id = $3
+                        """,
+                            interview_plan_id,
+                            job_id,
+                            schedule_id,
+                        )
 
-            except Exception:
-                logger.warning(
-                    "failed_to_fetch_advancement_fields",
-                    schedule_id=schedule_id,
-                    exc_info=True,
-                )
+                        logger.info(
+                            "advancement_fields_updated",
+                            schedule_id=schedule_id,
+                            interview_plan_id=interview_plan_id,
+                            job_id=job_id,
+                        )
+                        break  # Success, exit retry loop
+
+                    except Exception as e:
+                        if attempt < 3:
+                            logger.warning(
+                                "advancement_fields_fetch_retry",
+                                schedule_id=schedule_id,
+                                attempt=attempt,
+                                error=str(e),
+                            )
+                            await asyncio.sleep(0.5 * attempt)  # 0.5s, 1s delays
+                        else:
+                            logger.error(
+                                "advancement_fields_fetch_failed_all_retries",
+                                schedule_id=schedule_id,
+                                error=str(e),
+                            )
+                            # Continue - schedule exists but interview_plan_id remains NULL
 
             # Delete existing events (full replace strategy)
             await conn.execute(
@@ -188,35 +204,7 @@ async def insert_event_with_assignments(
         response = await ashby_client.post("interview.info", {"id": interview_id})
 
         if response["success"]:
-            interview: dict[str, Any] = response["results"]
-            await conn.execute(
-                """
-                INSERT INTO interviews
-                (interview_id, title, external_title, is_archived, is_debrief,
-                 instructions_html, instructions_plain, job_id,
-                 feedback_form_definition_id, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-                ON CONFLICT (interview_id) DO UPDATE SET
-                    title = EXCLUDED.title,
-                    external_title = EXCLUDED.external_title,
-                    is_archived = EXCLUDED.is_archived,
-                    is_debrief = EXCLUDED.is_debrief,
-                    instructions_html = EXCLUDED.instructions_html,
-                    instructions_plain = EXCLUDED.instructions_plain,
-                    job_id = EXCLUDED.job_id,
-                    feedback_form_definition_id = EXCLUDED.feedback_form_definition_id,
-                    updated_at = NOW()
-            """,
-                interview["id"],
-                interview.get("title"),
-                interview.get("externalTitle"),
-                interview.get("isArchived", False),
-                interview.get("isDebrief", False),
-                interview.get("instructionsHtml"),
-                interview.get("instructionsPlain"),
-                interview.get("jobId"),
-                interview.get("feedbackFormDefinitionId"),
-            )
+            await _upsert_interview(response["results"], conn=conn)
             logger.info("interview_fetched_and_updated", interview_id=interview_id)
         else:
             logger.warning(
@@ -224,9 +212,12 @@ async def insert_event_with_assignments(
                 interview_id=interview_id,
                 error=response.get("error"),
             )
+            # Continue processing - interview might already exist in DB
 
     except Exception:
         logger.exception("interview_fetch_error", interview_id=interview_id)
+        # Continue processing - interview might already exist in DB
+        # Only critical: schedule/event insertion failures will cause rollback
 
     # Insert event
     await conn.execute(
@@ -290,3 +281,65 @@ async def insert_event_with_assignments(
             json.dumps(interviewer_pool.get("trainingPath", {})),
             interviewer.get("updatedAt"),
         )
+
+
+async def refetch_missing_advancement_fields() -> None:
+    """
+    Background job to refetch interview_plan_id for schedules missing it.
+
+    Runs every hour to fix schedules where webhook-time fetch failed.
+    """
+    logger.info("refetch_advancement_fields_started")
+
+    try:
+        schedules = await db.fetch(
+            """
+            SELECT schedule_id, interview_stage_id
+            FROM interview_schedules
+            WHERE interview_plan_id IS NULL
+              AND interview_stage_id IS NOT NULL
+              AND status IN ('Scheduled', 'WaitingOnFeedback', 'Complete')
+              AND updated_at > NOW() - INTERVAL '7 days'
+            LIMIT 50
+        """
+        )
+
+        refetched = 0
+        for schedule in schedules:
+            schedule_id = str(schedule["schedule_id"])
+            stage_id = str(schedule["interview_stage_id"])
+
+            try:
+                from app.clients.ashby import fetch_interview_stage_info
+
+                stage_info = await fetch_interview_stage_info(stage_id)
+                interview_plan_id = stage_info.get("interviewPlanId")
+
+                await db.execute(
+                    """
+                    UPDATE interview_schedules
+                    SET interview_plan_id = $1
+                    WHERE schedule_id = $2
+                """,
+                    interview_plan_id,
+                    schedule_id,
+                )
+
+                refetched += 1
+                logger.info(
+                    "advancement_fields_refetched",
+                    schedule_id=schedule_id,
+                    interview_plan_id=interview_plan_id,
+                )
+
+            except Exception as e:
+                logger.error(
+                    "refetch_failed",
+                    schedule_id=schedule_id,
+                    error=str(e),
+                )
+
+        logger.info("refetch_advancement_fields_completed", refetched=refetched)
+
+    except Exception as e:
+        logger.error("refetch_advancement_fields_error", error=str(e))

@@ -1,5 +1,6 @@
 """Application configuration."""
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,7 +28,18 @@ class Settings(BaseSettings):
     advancement_feedback_timeout_days: int = 7
     advancement_feedback_min_wait_minutes: int = 30
     admin_slack_channel_id: str | None = None
-    default_archive_reason_id: str | None = None
+    default_archive_reason_id: str  # Required, not optional
+
+    @field_validator("default_archive_reason_id")
+    @classmethod
+    def validate_archive_reason(cls, v: str) -> str:
+        """Validate archive reason ID is present."""
+        if not v or not v.strip():
+            raise ValueError(
+                "DEFAULT_ARCHIVE_REASON_ID is required for candidate rejections. "
+                "Get this UUID from Ashby: Settings > Archive Reasons"
+            )
+        return v.strip()
 
 
 settings = Settings()

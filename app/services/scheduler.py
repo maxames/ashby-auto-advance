@@ -7,6 +7,7 @@ from structlog import get_logger
 
 from app.services.advancement import process_advancement_evaluations
 from app.services.feedback_sync import sync_feedback_for_active_schedules
+from app.services.interviews import refetch_missing_advancement_fields
 from app.services.sync import sync_feedback_forms, sync_interviews, sync_slack_users
 
 logger = get_logger()
@@ -22,6 +23,7 @@ def setup_scheduler() -> None:
     Jobs:
     - sync_feedback_for_active_schedules: Every 30 minutes
     - process_advancement_evaluations: Every 30 minutes
+    - refetch_missing_advancement_fields: Every hour
     - sync_feedback_forms: Every 6 hours
     - sync_interviews: Every 12 hours
     - sync_slack_users: Every 12 hours
@@ -45,6 +47,17 @@ def setup_scheduler() -> None:
         trigger="interval",
         minutes=30,
         id="advancement_evaluations",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
+
+    # Refetch missing advancement fields every hour
+    scheduler.add_job(
+        refetch_missing_advancement_fields,
+        trigger="interval",
+        hours=1,
+        id="refetch_advancement_fields",
         replace_existing=True,
         coalesce=True,
         max_instances=1,
@@ -83,7 +96,7 @@ def setup_scheduler() -> None:
         max_instances=1,
     )
 
-    logger.info("scheduler_configured", jobs=5)
+    logger.info("scheduler_configured", jobs=6)
 
 
 def start_scheduler() -> None:
