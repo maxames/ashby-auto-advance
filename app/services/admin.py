@@ -83,11 +83,7 @@ async def create_advancement_rule(
         """,
             rule_id,
             action["action_type"],
-            (
-                json.dumps(action.get("action_config"))
-                if action.get("action_config")
-                else None
-            ),
+            (json.dumps(action.get("action_config")) if action.get("action_config") else None),
             action.get("execution_order", 1),
         )
         action_ids.append(str(action_id))
@@ -128,9 +124,7 @@ async def get_advancement_statistics() -> dict[str, Any]:
     """
     )
 
-    status_counts = {
-        row["execution_status"]: row["count"] for row in status_counts_rows
-    }
+    status_counts = {row["execution_status"]: row["count"] for row in status_counts_rows}
 
     # Count pending evaluations
     pending_evaluations = await db.fetchval(
@@ -306,12 +300,8 @@ async def get_all_advancement_rules(active_only: bool = True) -> list[dict[str, 
                     str(rule["target_stage_id"]) if rule["target_stage_id"] else None
                 ),
                 "is_active": rule["is_active"],
-                "created_at": (
-                    rule["created_at"].isoformat() if rule["created_at"] else None
-                ),
-                "updated_at": (
-                    rule["updated_at"].isoformat() if rule["updated_at"] else None
-                ),
+                "created_at": (rule["created_at"].isoformat() if rule["created_at"] else None),
+                "updated_at": (rule["updated_at"].isoformat() if rule["updated_at"] else None),
                 "requirements": [
                     {
                         "requirement_id": str(req["requirement_id"]),
@@ -331,9 +321,7 @@ async def get_all_advancement_rules(active_only: bool = True) -> list[dict[str, 
                         "action_id": str(act["action_id"]),
                         "action_type": act["action_type"],
                         "action_config": (
-                            json.loads(act["action_config"])
-                            if act["action_config"]
-                            else None
+                            json.loads(act["action_config"]) if act["action_config"] else None
                         ),
                         "execution_order": act["execution_order"],
                         "created_at": (
@@ -345,9 +333,7 @@ async def get_all_advancement_rules(active_only: bool = True) -> list[dict[str, 
             }
         )
 
-    logger.info(
-        "advancement_rules_retrieved", count=len(result), active_only=active_only
-    )
+    logger.info("advancement_rules_retrieved", count=len(result), active_only=active_only)
     return result
 
 
@@ -423,9 +409,7 @@ async def get_advancement_rule_by_id(rule_id: str) -> dict[str, Any] | None:
         "job_id": str(rule["job_id"]) if rule["job_id"] else None,
         "interview_plan_id": str(rule["interview_plan_id"]),
         "interview_stage_id": str(rule["interview_stage_id"]),
-        "target_stage_id": (
-            str(rule["target_stage_id"]) if rule["target_stage_id"] else None
-        ),
+        "target_stage_id": (str(rule["target_stage_id"]) if rule["target_stage_id"] else None),
         "is_active": rule["is_active"],
         "created_at": rule["created_at"].isoformat() if rule["created_at"] else None,
         "updated_at": rule["updated_at"].isoformat() if rule["updated_at"] else None,
@@ -437,9 +421,7 @@ async def get_advancement_rule_by_id(rule_id: str) -> dict[str, Any] | None:
                 "operator": req["operator"],
                 "threshold_value": req["threshold_value"],
                 "is_required": req["is_required"],
-                "created_at": (
-                    req["created_at"].isoformat() if req["created_at"] else None
-                ),
+                "created_at": (req["created_at"].isoformat() if req["created_at"] else None),
             }
             for req in requirements
         ],
@@ -451,9 +433,7 @@ async def get_advancement_rule_by_id(rule_id: str) -> dict[str, Any] | None:
                     json.loads(act["action_config"]) if act["action_config"] else None
                 ),
                 "execution_order": act["execution_order"],
-                "created_at": (
-                    act["created_at"].isoformat() if act["created_at"] else None
-                ),
+                "created_at": (act["created_at"].isoformat() if act["created_at"] else None),
             }
             for act in actions
         ],

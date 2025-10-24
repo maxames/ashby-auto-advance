@@ -214,3 +214,21 @@ __marimo__/
 # Project-specific
 /temp/
 .env.test
+
+# Ashby API response files (contain real data)
+interview_plans.json
+interviews.json
+interview_stages.json
+test_job_stages.json
+jobs.json
+feedback_form.json
+feedback_forms.json
+
+# Staging config files (contain real UUIDs)
+scripts/configs/staging_*.json
+scripts/configs/production_*.json
+scripts/configs/STAGING_CONFIGS.md
+
+# Internal documentation/summaries
+ADVANCEMENT_TESTING_IMPLEMENTATION.md
+TESTING_GUIDE_UPDATE_SUMMARY.md

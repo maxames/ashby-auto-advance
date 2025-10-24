@@ -116,11 +116,32 @@ async def upsert_schedule_with_events(
                         stage_info = await fetch_interview_stage_info(stage_id)
                         interview_plan_id = stage_info.get("interviewPlanId")
 
-                        # Extract job_id from first interview event
-                        if schedule.get("interviewEvents"):
-                            first_event = schedule["interviewEvents"][0]
-                            if first_event.get("interview", {}).get("jobId"):
-                                job_id = first_event["interview"]["jobId"]
+                        # Fetch job_id from application API (webhook never includes it)
+                        if schedule.get("applicationId"):
+                            try:
+                                from app.clients.ashby import ashby_client
+
+                                app_response = await ashby_client.post(
+                                    "application.info",
+                                    {"applicationId": schedule["applicationId"]},
+                                )
+
+                                if app_response["success"] and app_response.get("results"):
+                                    job_id = app_response["results"].get("job", {}).get("id")
+
+                                    logger.info(
+                                        "job_id_fetched_from_application",
+                                        schedule_id=schedule_id,
+                                        application_id=schedule["applicationId"],
+                                        job_id=job_id,
+                                    )
+                            except Exception as e:
+                                logger.warning(
+                                    "job_id_fetch_failed",
+                                    schedule_id=schedule_id,
+                                    error=str(e),
+                                )
+                                # job_id remains None - will work for global rules
 
                         # Success - update schedule
                         await conn.execute(

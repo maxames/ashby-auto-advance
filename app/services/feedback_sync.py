@@ -34,6 +34,29 @@ async def sync_feedback_for_application(application_id: str) -> int:
         new_count = 0
 
         for submission in submissions:
+            # Skip feedback without event_id (can't link it to a schedule)
+            event_id = submission.get("interviewEventId")
+            if not event_id:
+                logger.debug(
+                    "feedback_skipped_no_event_id",
+                    feedback_id=submission["id"],
+                )
+                continue
+
+            # Check if event exists in our database (might be from different schedule)
+            event_exists = await db.fetchval(
+                "SELECT 1 FROM interview_events WHERE event_id = $1",
+                event_id,
+            )
+
+            if not event_exists:
+                logger.debug(
+                    "feedback_skipped_event_not_in_db",
+                    feedback_id=submission["id"],
+                    event_id=event_id,
+                )
+                continue
+
             # Insert with ON CONFLICT DO NOTHING for idempotency
             result = await db.execute(
                 """
@@ -53,8 +76,12 @@ async def sync_feedback_for_application(application_id: str) -> int:
             """,
                 submission["id"],
                 submission["applicationId"],
-                submission["interviewEventId"],
-                submission["submittedByUserId"],
+                event_id,
+                (
+                    submission.get("submittedByUser", {}).get("id")
+                    if submission.get("submittedByUser")
+                    else None
+                ),
                 submission["interviewId"],
                 submission["submittedAt"],
                 json.dumps(submission["submittedValues"]),
