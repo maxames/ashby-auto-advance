@@ -107,7 +107,9 @@ async def create_advancement_rule(rule: AdvancementRuleCreate) -> dict[str, Any]
     Returns:
         Created rule with IDs
     """
-    logger.info("admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id)
+    logger.info(
+        "admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id
+    )
 
     # Convert Pydantic models to dicts for service layer
     requirements = [req.model_dump() for req in rule.requirements]
@@ -123,3 +125,71 @@ async def create_advancement_rule(rule: AdvancementRuleCreate) -> dict[str, Any]
     )
 
     return {**result, "status": "created"}
+
+
+@router.get("/rules")
+async def list_advancement_rules(active_only: bool = True) -> dict[str, Any]:
+    """
+    List all advancement rules with their requirements and actions.
+
+    Args:
+        active_only: If True, only return active rules (default: True)
+
+    Returns:
+        Dict with count and list of rules
+    """
+    logger.info("admin_list_advancement_rules_triggered", active_only=active_only)
+    rules = await admin_service.get_all_advancement_rules(active_only=active_only)
+    return {"count": len(rules), "rules": rules}
+
+
+@router.get("/rules/{rule_id}")
+async def get_advancement_rule(rule_id: str) -> dict[str, Any]:
+    """
+    Get detailed information about a specific advancement rule.
+
+    Args:
+        rule_id: Rule UUID
+
+    Returns:
+        Rule details with requirements and actions
+
+    Raises:
+        HTTPException: 404 if rule not found
+    """
+    from fastapi import HTTPException
+
+    logger.info("admin_get_advancement_rule_triggered", rule_id=rule_id)
+    rule = await admin_service.get_advancement_rule_by_id(rule_id)
+
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found")
+
+    return rule
+
+
+@router.delete("/rules/{rule_id}")
+async def delete_advancement_rule(rule_id: str) -> dict[str, str]:
+    """
+    Soft-delete an advancement rule by setting is_active=false.
+
+    Args:
+        rule_id: Rule UUID to delete
+
+    Returns:
+        Status message
+
+    Raises:
+        HTTPException: 404 if rule not found or already deleted
+    """
+    from fastapi import HTTPException
+
+    logger.info("admin_delete_advancement_rule_triggered", rule_id=rule_id)
+    success = await admin_service.delete_advancement_rule(rule_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=404, detail=f"Rule {rule_id} not found or already deleted"
+        )
+
+    return {"status": "deleted", "rule_id": rule_id}

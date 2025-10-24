@@ -1,0 +1,42 @@
+{
+  "name": "Onsite Interview",
+  "description": "Full onsite with multiple interviews - all must pass to advance to offer stage",
+  "job_id": null,
+  "interview_plan_id": "PASTE_UUID_HERE",
+  "interview_stage_id": "PASTE_UUID_HERE",
+  "target_stage_id": "PASTE_OFFER_STAGE_UUID_HERE",
+  "interviews": [
+    {
+      "interview_id": "PASTE_TECHNICAL_DEEP_DIVE_UUID_HERE",
+      "name": "Technical Deep Dive",
+      "score_fields": [
+        "overall_score",
+        "coding_ability",
+        "system_design",
+        "technical_depth"
+      ]
+    },
+    {
+      "interview_id": "PASTE_CULTURE_FIT_UUID_HERE",
+      "name": "Culture Fit",
+      "score_fields": [
+        "overall_score",
+        "team_fit",
+        "communication",
+        "values_alignment"
+      ]
+    },
+    {
+      "interview_id": "PASTE_HIRING_MANAGER_UUID_HERE",
+      "name": "Hiring Manager Interview",
+      "score_fields": [
+        "overall_score",
+        "role_fit",
+        "leadership_potential"
+      ]
+    }
+  ],
+  "default_threshold": "4",
+  "default_operator": ">="
+}
+

@@ -1,0 +1,24 @@
+{
+  "name": "Panel Interview",
+  "description": "Single interview with multiple interviewers - all must submit passing scores",
+  "job_id": null,
+  "interview_plan_id": "PASTE_UUID_HERE",
+  "interview_stage_id": "PASTE_UUID_HERE",
+  "target_stage_id": null,
+  "interviews": [
+    {
+      "interview_id": "PASTE_UUID_HERE",
+      "name": "Engineering Panel",
+      "score_fields": [
+        "overall_score",
+        "technical_skills",
+        "collaboration",
+        "culture_fit"
+      ]
+    }
+  ],
+  "default_threshold": "3",
+  "default_operator": ">=",
+  "notes": "This config is for a single interview with multiple assigned interviewers (panel). ALL interviewers must submit feedback and ALL must have passing scores."
+}
+

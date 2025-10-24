@@ -1,0 +1,23 @@
+{
+  "name": "Technical Screen",
+  "description": "Standard tech screen for SWE roles - single interviewer evaluates coding and problem-solving",
+  "job_id": null,
+  "interview_plan_id": "PASTE_UUID_HERE",
+  "interview_stage_id": "PASTE_UUID_HERE",
+  "target_stage_id": null,
+  "interviews": [
+    {
+      "interview_id": "PASTE_UUID_HERE",
+      "name": "Technical Screen",
+      "score_fields": [
+        "overall_score",
+        "technical_skills",
+        "problem_solving",
+        "communication"
+      ]
+    }
+  ],
+  "default_threshold": "3",
+  "default_operator": ">="
+}
+

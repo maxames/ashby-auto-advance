@@ -83,7 +83,11 @@ async def create_advancement_rule(
         """,
             rule_id,
             action["action_type"],
-            (json.dumps(action.get("action_config")) if action.get("action_config") else None),
+            (
+                json.dumps(action.get("action_config"))
+                if action.get("action_config")
+                else None
+            ),
             action.get("execution_order", 1),
         )
         action_ids.append(str(action_id))
@@ -124,7 +128,9 @@ async def get_advancement_statistics() -> dict[str, Any]:
     """
     )
 
-    status_counts = {row["execution_status"]: row["count"] for row in status_counts_rows}
+    status_counts = {
+        row["execution_status"]: row["count"] for row in status_counts_rows
+    }
 
     # Count pending evaluations
     pending_evaluations = await db.fetchval(
@@ -221,3 +227,268 @@ async def get_schedules_for_application(application_id: str) -> list[dict[str, A
         }
         for s in schedules
     ]
+
+
+async def get_all_advancement_rules(active_only: bool = True) -> list[dict[str, Any]]:
+    """
+    Get all advancement rules with their requirements and actions.
+
+    Args:
+        active_only: If True, only return active rules
+
+    Returns:
+        List of rule dicts with nested requirements and actions
+    """
+    # Get all rules
+    where_clause = "WHERE r.is_active = true" if active_only else ""
+    rules = await db.fetch(
+        f"""
+        SELECT
+            r.rule_id,
+            r.job_id,
+            r.interview_plan_id,
+            r.interview_stage_id,
+            r.target_stage_id,
+            r.is_active,
+            r.created_at,
+            r.updated_at
+        FROM advancement_rules r
+        {where_clause}
+        ORDER BY r.created_at DESC
+    """
+    )
+
+    result = []
+    for rule in rules:
+        rule_id = str(rule["rule_id"])
+
+        # Get requirements for this rule
+        requirements = await db.fetch(
+            """
+            SELECT
+                requirement_id,
+                interview_id,
+                score_field_path,
+                operator,
+                threshold_value,
+                is_required,
+                created_at
+            FROM advancement_rule_requirements
+            WHERE rule_id = $1
+            ORDER BY created_at
+        """,
+            rule["rule_id"],
+        )
+
+        # Get actions for this rule
+        actions = await db.fetch(
+            """
+            SELECT
+                action_id,
+                action_type,
+                action_config,
+                execution_order,
+                created_at
+            FROM advancement_rule_actions
+            WHERE rule_id = $1
+            ORDER BY execution_order
+        """,
+            rule["rule_id"],
+        )
+
+        result.append(
+            {
+                "rule_id": rule_id,
+                "job_id": str(rule["job_id"]) if rule["job_id"] else None,
+                "interview_plan_id": str(rule["interview_plan_id"]),
+                "interview_stage_id": str(rule["interview_stage_id"]),
+                "target_stage_id": (
+                    str(rule["target_stage_id"]) if rule["target_stage_id"] else None
+                ),
+                "is_active": rule["is_active"],
+                "created_at": (
+                    rule["created_at"].isoformat() if rule["created_at"] else None
+                ),
+                "updated_at": (
+                    rule["updated_at"].isoformat() if rule["updated_at"] else None
+                ),
+                "requirements": [
+                    {
+                        "requirement_id": str(req["requirement_id"]),
+                        "interview_id": str(req["interview_id"]),
+                        "score_field_path": req["score_field_path"],
+                        "operator": req["operator"],
+                        "threshold_value": req["threshold_value"],
+                        "is_required": req["is_required"],
+                        "created_at": (
+                            req["created_at"].isoformat() if req["created_at"] else None
+                        ),
+                    }
+                    for req in requirements
+                ],
+                "actions": [
+                    {
+                        "action_id": str(act["action_id"]),
+                        "action_type": act["action_type"],
+                        "action_config": (
+                            json.loads(act["action_config"])
+                            if act["action_config"]
+                            else None
+                        ),
+                        "execution_order": act["execution_order"],
+                        "created_at": (
+                            act["created_at"].isoformat() if act["created_at"] else None
+                        ),
+                    }
+                    for act in actions
+                ],
+            }
+        )
+
+    logger.info(
+        "advancement_rules_retrieved", count=len(result), active_only=active_only
+    )
+    return result
+
+
+async def get_advancement_rule_by_id(rule_id: str) -> dict[str, Any] | None:
+    """
+    Get a specific advancement rule by ID with all requirements and actions.
+
+    Args:
+        rule_id: Rule UUID
+
+    Returns:
+        Rule dict with nested requirements and actions, or None if not found
+    """
+    rule = await db.fetchrow(
+        """
+        SELECT
+            rule_id,
+            job_id,
+            interview_plan_id,
+            interview_stage_id,
+            target_stage_id,
+            is_active,
+            created_at,
+            updated_at
+        FROM advancement_rules
+        WHERE rule_id = $1
+    """,
+        UUID(rule_id),
+    )
+
+    if not rule:
+        logger.warning("rule_not_found", rule_id=rule_id)
+        return None
+
+    # Get requirements
+    requirements = await db.fetch(
+        """
+        SELECT
+            requirement_id,
+            interview_id,
+            score_field_path,
+            operator,
+            threshold_value,
+            is_required,
+            created_at
+        FROM advancement_rule_requirements
+        WHERE rule_id = $1
+        ORDER BY created_at
+    """,
+        rule["rule_id"],
+    )
+
+    # Get actions
+    actions = await db.fetch(
+        """
+        SELECT
+            action_id,
+            action_type,
+            action_config,
+            execution_order,
+            created_at
+        FROM advancement_rule_actions
+        WHERE rule_id = $1
+        ORDER BY execution_order
+    """,
+        rule["rule_id"],
+    )
+
+    logger.info("advancement_rule_retrieved", rule_id=rule_id)
+
+    return {
+        "rule_id": str(rule["rule_id"]),
+        "job_id": str(rule["job_id"]) if rule["job_id"] else None,
+        "interview_plan_id": str(rule["interview_plan_id"]),
+        "interview_stage_id": str(rule["interview_stage_id"]),
+        "target_stage_id": (
+            str(rule["target_stage_id"]) if rule["target_stage_id"] else None
+        ),
+        "is_active": rule["is_active"],
+        "created_at": rule["created_at"].isoformat() if rule["created_at"] else None,
+        "updated_at": rule["updated_at"].isoformat() if rule["updated_at"] else None,
+        "requirements": [
+            {
+                "requirement_id": str(req["requirement_id"]),
+                "interview_id": str(req["interview_id"]),
+                "score_field_path": req["score_field_path"],
+                "operator": req["operator"],
+                "threshold_value": req["threshold_value"],
+                "is_required": req["is_required"],
+                "created_at": (
+                    req["created_at"].isoformat() if req["created_at"] else None
+                ),
+            }
+            for req in requirements
+        ],
+        "actions": [
+            {
+                "action_id": str(act["action_id"]),
+                "action_type": act["action_type"],
+                "action_config": (
+                    json.loads(act["action_config"]) if act["action_config"] else None
+                ),
+                "execution_order": act["execution_order"],
+                "created_at": (
+                    act["created_at"].isoformat() if act["created_at"] else None
+                ),
+            }
+            for act in actions
+        ],
+    }
+
+
+async def delete_advancement_rule(rule_id: str) -> bool:
+    """
+    Soft-delete an advancement rule by setting is_active=false.
+
+    Args:
+        rule_id: Rule UUID to delete
+
+    Returns:
+        True if deleted, False if not found
+
+    Note:
+        This is a soft delete for audit trail purposes.
+        Requirements and actions are left intact.
+    """
+    result = await db.execute(
+        """
+        UPDATE advancement_rules
+        SET is_active = false, updated_at = NOW()
+        WHERE rule_id = $1 AND is_active = true
+    """,
+        UUID(rule_id),
+    )
+
+    # Check if row was updated (result will be like "UPDATE 1" or "UPDATE 0")
+    rows_affected = int(result.split()[-1]) if result else 0
+
+    if rows_affected > 0:
+        logger.info("advancement_rule_deleted", rule_id=rule_id)
+        return True
+    else:
+        logger.warning("advancement_rule_not_found_or_already_deleted", rule_id=rule_id)
+        return False
