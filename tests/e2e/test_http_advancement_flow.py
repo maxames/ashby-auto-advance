@@ -99,8 +99,8 @@ async def test_complete_http_advancement_flow(
     # Trigger advancement evaluation
     await advancement.process_advancement_evaluations()
 
-    # Assert: advancement was executed
-    assert mock_advance.called
+    # Verify advancement occurred exactly once
+    mock_advance.assert_called_once()
 
     # Verify audit trail
     async with clean_db.acquire() as conn:

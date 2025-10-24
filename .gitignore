@@ -228,7 +228,3 @@ feedback_forms.json
 scripts/configs/staging_*.json
 scripts/configs/production_*.json
 scripts/configs/STAGING_CONFIGS.md
-
-# Internal documentation/summaries
-ADVANCEMENT_TESTING_IMPLEMENTATION.md
-TESTING_GUIDE_UPDATE_SUMMARY.md

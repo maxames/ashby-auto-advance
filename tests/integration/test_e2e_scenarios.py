@@ -100,8 +100,8 @@ class TestPanelInterviewScenarios:
         # Execute: Run evaluation
         await process_advancement_evaluations()
 
-        # Assert: Candidate was advanced
-        assert mock_advance.called, "Candidate should have been advanced"
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
 
         # Verify audit trail
         async with clean_db.acquire() as conn:
@@ -367,8 +367,8 @@ class TestSequentialInterviewScenarios:
         # Execute
         await process_advancement_evaluations()
 
-        # Assert: Advanced (both interviews passed)
-        assert mock_advance.called
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_sequential_interviews_second_fails(self, clean_db, monkeypatch):
@@ -631,8 +631,8 @@ class TestEdgeCaseScenarios:
         # Execute again
         await process_advancement_evaluations()
 
-        # Assert: NOW it should advance
-        assert mock_advance.called
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_missing_interview_plan_id_skipped(self, clean_db):
@@ -852,8 +852,8 @@ class TestEdgeCaseScenarios:
         )
         await process_advancement_evaluations()
 
-        # Assert: Should advance (score high enough)
-        assert mock_advance.called
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_ashby_api_timeout_graceful_handling(
@@ -1031,8 +1031,8 @@ class TestEdgeCaseScenarios:
 
         await process_advancement_evaluations()
 
-        # Assert: First matching rule was used (rule1 with threshold 3)
-        assert mock_advance.called
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
         # Verify it advanced to rule1's target stage
         # Function is called as: advance_candidate_stage(application_id, target_stage_id)
         call_args = mock_advance.call_args[0]  # Positional args tuple

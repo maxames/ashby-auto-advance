@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AshbyWebhookPayload(BaseModel):
@@ -20,10 +20,7 @@ class AshbyWebhookPayload(BaseModel):
     webhookId: str | None = None
     webhookToken: str | None = None
 
-    class Config:
-        """Pydantic configuration."""
-
-        extra = "allow"  # Allow additional fields
+    model_config = ConfigDict(extra="allow")  # Allow additional fields
 
 
 class ErrorResponse(BaseModel):

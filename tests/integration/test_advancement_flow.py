@@ -1,7 +1,7 @@
 """Integration tests for full advancement workflow."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -10,7 +10,6 @@ from app.services.feedback_sync import sync_feedback_for_application
 from tests.fixtures.factories import (
     create_test_feedback,
     create_test_rule,
-    create_test_schedule,
 )
 
 
@@ -89,8 +88,8 @@ class TestAdvancementFlow:
         # 4. Run evaluation (simulating scheduled job)
         await process_advancement_evaluations()
 
-        # 5. Verify advancement occurred (may be called with retries)
-        assert mock_advance.called, "Mock advance should have been called"
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
 
         # Check audit trail
         async with clean_db.acquire() as conn:
@@ -326,5 +325,5 @@ class TestAdvancementFlow:
         # Run evaluation again
         await process_advancement_evaluations()
 
-        # NOW it should advance (may be called with retries)
-        assert mock_advance.called, "Mock advance should have been called"
+        # Verify advancement occurred exactly once
+        mock_advance.assert_called_once()
