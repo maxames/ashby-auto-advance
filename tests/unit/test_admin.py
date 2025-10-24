@@ -199,12 +199,8 @@ class TestGetSchedulesForApplication:
         application_id = str(uuid4())
 
         # Create multiple schedules for same application
-        await create_test_schedule(
-            clean_db, application_id=application_id, status="Complete"
-        )
-        await create_test_schedule(
-            clean_db, application_id=application_id, status="Scheduled"
-        )
+        await create_test_schedule(clean_db, application_id=application_id, status="Complete")
+        await create_test_schedule(clean_db, application_id=application_id, status="Scheduled")
 
         # Create schedule for different application
         await create_test_schedule(clean_db, status="Complete")

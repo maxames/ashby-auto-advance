@@ -71,9 +71,7 @@ def test_verify_ashby_signature_modified_body():
     """Test that signature fails when body is modified."""
     secret = "test_secret"
     original_body = b'{"action": "test", "data": {}}'
-    hex_digest = hmac.new(
-        secret.encode(), original_body, digestmod="sha256"
-    ).hexdigest()
+    hex_digest = hmac.new(secret.encode(), original_body, digestmod="sha256").hexdigest()
     signature = f"sha256={hex_digest}"
 
     modified_body = b'{"action": "test", "data": {"modified": true}}'

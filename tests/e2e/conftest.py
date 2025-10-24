@@ -20,9 +20,7 @@ async def http_client(clean_db):
     The app's lifespan context manager is not run - we test the app
     without scheduler and background jobs for faster, more deterministic tests.
     """
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
@@ -52,9 +50,7 @@ def sign_slack_request(body: str, timestamp: str, secret: str) -> str:
         Slack signature in format 'v0=<hex_signature>'
     """
     sig_basestring = f"v0:{timestamp}:{body}"
-    signature = hmac.new(
-        secret.encode(), sig_basestring.encode(), hashlib.sha256
-    ).hexdigest()
+    signature = hmac.new(secret.encode(), sig_basestring.encode(), hashlib.sha256).hexdigest()
     return f"v0={signature}"
 
 

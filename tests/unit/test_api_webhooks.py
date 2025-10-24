@@ -60,9 +60,7 @@ async def test_webhook_missing_signature_returns_401(clean_db):
     with pytest.raises(Exception) as exc_info:
         await handle_ashby_webhook(mock_request)
 
-    assert "401" in str(exc_info.value) or "Missing Ashby-Signature" in str(
-        exc_info.value
-    )
+    assert "401" in str(exc_info.value) or "Missing Ashby-Signature" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -83,9 +81,7 @@ async def test_webhook_invalid_signature_returns_401(clean_db):
         with pytest.raises(Exception) as exc_info:
             await handle_ashby_webhook(mock_request)
 
-        assert "401" in str(exc_info.value) or "Invalid signature" in str(
-            exc_info.value
-        )
+        assert "401" in str(exc_info.value) or "Invalid signature" in str(exc_info.value)
 
 
 @pytest.mark.asyncio
@@ -103,10 +99,12 @@ async def test_webhook_valid_signature_accepted(clean_db):
     mock_request.headers = Headers({"Ashby-Signature": "valid_signature"})
 
     # Mock signature verification and schedule processing
-    with patch("app.api.webhooks.verify_ashby_signature", return_value=True), patch(
-        "app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock
-    ) as mock_handler:
-
+    with (
+        patch("app.api.webhooks.verify_ashby_signature", return_value=True),
+        patch(
+            "app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock
+        ) as mock_handler,
+    ):
         response = await handle_ashby_webhook(mock_request)
 
         assert response.status_code == 204
@@ -148,10 +146,10 @@ async def test_webhook_logs_to_audit_table(clean_db):
     mock_request.body = AsyncMock(return_value=body)
     mock_request.headers = Headers({"Ashby-Signature": "valid_signature"})
 
-    with patch("app.api.webhooks.verify_ashby_signature", return_value=True), patch(
-        "app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock
+    with (
+        patch("app.api.webhooks.verify_ashby_signature", return_value=True),
+        patch("app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock),
     ):
-
         await handle_ashby_webhook(mock_request)
 
         # Check database for audit entry
@@ -187,10 +185,12 @@ async def test_webhook_interview_schedule_update_calls_handler(clean_db):
     mock_request.body = AsyncMock(return_value=body)
     mock_request.headers = Headers({"Ashby-Signature": "valid_signature"})
 
-    with patch("app.api.webhooks.verify_ashby_signature", return_value=True), patch(
-        "app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock
-    ) as mock_handler:
-
+    with (
+        patch("app.api.webhooks.verify_ashby_signature", return_value=True),
+        patch(
+            "app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock
+        ) as mock_handler,
+    ):
         response = await handle_ashby_webhook(mock_request)
 
         assert response.status_code == 204
@@ -230,10 +230,10 @@ async def test_webhook_returns_204_on_success(clean_db):
     mock_request.body = AsyncMock(return_value=body)
     mock_request.headers = Headers({"Ashby-Signature": "valid_signature"})
 
-    with patch("app.api.webhooks.verify_ashby_signature", return_value=True), patch(
-        "app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock
+    with (
+        patch("app.api.webhooks.verify_ashby_signature", return_value=True),
+        patch("app.api.webhooks.handle_interview_schedule_update", new_callable=AsyncMock),
     ):
-
         response = await handle_ashby_webhook(mock_request)
 
         assert response.status_code == 204

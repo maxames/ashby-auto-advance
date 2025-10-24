@@ -36,9 +36,7 @@ def sign_payload(body: str) -> str:
 
     Returns signature in Ashby format: "sha256=<hex_digest>"
     """
-    hex_digest = hmac.new(
-        WEBHOOK_SECRET.encode(), body.encode(), hashlib.sha256
-    ).hexdigest()
+    hex_digest = hmac.new(WEBHOOK_SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
     return f"sha256={hex_digest}"
 
 
@@ -126,9 +124,7 @@ async def scenario_single_interviewer_pass(base_url: str):
                             "id": event_id,
                             "interviewId": str(uuid4()),
                             "startTime": datetime.now(UTC).isoformat(),
-                            "endTime": (
-                                datetime.now(UTC) + timedelta(hours=1)
-                            ).isoformat(),
+                            "endTime": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
                             "feedbackLink": "https://ashby.com/feedback",
                             "location": "Zoom",
                             "meetingLink": "https://zoom.us/j/test",
@@ -172,9 +168,7 @@ async def scenario_single_interviewer_pass(base_url: str):
 
         print_step(3, "Send webhook: Mark complete with passing feedback")
         payload["data"]["interviewSchedule"]["status"] = "Complete"
-        payload["data"]["interviewSchedule"]["interviewEvents"][0][
-            "hasSubmittedFeedback"
-        ] = True
+        payload["data"]["interviewSchedule"]["interviewEvents"][0]["hasSubmittedFeedback"] = True
 
         response = await send_webhook(client, payload)
         if response.status_code == 200:
@@ -208,9 +202,9 @@ async def scenario_panel_all_pass(base_url: str):
             interviewers.append(
                 {
                     "id": str(uuid4()),
-                    "firstName": f"Interviewer_{i+1}",
+                    "firstName": f"Interviewer_{i + 1}",
                     "lastName": "Test",
-                    "email": f"interviewer{i+1}@example.com",
+                    "email": f"interviewer{i + 1}@example.com",
                     "globalRole": "Interviewer",
                     "trainingRole": "Trained",
                     "isEnabled": True,
@@ -238,9 +232,7 @@ async def scenario_panel_all_pass(base_url: str):
                             "id": str(uuid4()),
                             "interviewId": str(uuid4()),
                             "startTime": datetime.now(UTC).isoformat(),
-                            "endTime": (
-                                datetime.now(UTC) + timedelta(hours=1)
-                            ).isoformat(),
+                            "endTime": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
                             "feedbackLink": "https://ashby.com/feedback",
                             "location": "Zoom",
                             "meetingLink": "https://zoom.us/j/test",
@@ -265,9 +257,7 @@ async def scenario_panel_all_pass(base_url: str):
 
         print_step(3, "Mark complete (all 3 interviewers submit)")
         payload["data"]["interviewSchedule"]["status"] = "Complete"
-        payload["data"]["interviewSchedule"]["interviewEvents"][0][
-            "hasSubmittedFeedback"
-        ] = True
+        payload["data"]["interviewSchedule"]["interviewEvents"][0]["hasSubmittedFeedback"] = True
 
         response = await send_webhook(client, payload)
         if response.status_code == 200:
@@ -362,9 +352,7 @@ async def interactive_menu(base_url: str):
             _, func = scenarios[choice]
             try:
                 if choice == "4":
-                    async with httpx.AsyncClient(
-                        base_url=base_url, timeout=30.0
-                    ) as client:
+                    async with httpx.AsyncClient(base_url=base_url, timeout=30.0) as client:
                         await check_health(client)
                 else:
                     await func(base_url)
@@ -385,9 +373,7 @@ async def check_health_only(base_url: str):
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Manual E2E testing for Ashby Auto-Advance"
-    )
+    parser = argparse.ArgumentParser(description="Manual E2E testing for Ashby Auto-Advance")
     parser.add_argument(
         "--scenario",
         choices=["single", "panel", "rejection", "health"],

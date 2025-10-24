@@ -26,9 +26,7 @@ async def test_sync_feedback_forms_fetches_and_stores(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await sync_module.sync_feedback_forms()
@@ -67,9 +65,7 @@ async def test_sync_feedback_forms_handles_pagination(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.side_effect = [page1_response, page2_response]
 
         await sync_module.sync_feedback_forms()
@@ -79,9 +75,7 @@ async def test_sync_feedback_forms_handles_pagination(clean_db):
 
         # Verify both forms stored
         async with clean_db.acquire() as conn:
-            count = await conn.fetchval(
-                "SELECT COUNT(*) FROM feedback_form_definitions"
-            )
+            count = await conn.fetchval("SELECT COUNT(*) FROM feedback_form_definitions")
             assert count == 2
 
 
@@ -119,9 +113,7 @@ async def test_sync_feedback_forms_upserts_existing_forms(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await sync_module.sync_feedback_forms()
@@ -143,9 +135,7 @@ async def test_sync_feedback_forms_api_error_handled(clean_db):
         "error": "API Error",
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         # Should not raise exception
@@ -153,9 +143,7 @@ async def test_sync_feedback_forms_api_error_handled(clean_db):
 
         # Verify no forms were stored
         async with clean_db.acquire() as conn:
-            count = await conn.fetchval(
-                "SELECT COUNT(*) FROM feedback_form_definitions"
-            )
+            count = await conn.fetchval("SELECT COUNT(*) FROM feedback_form_definitions")
             assert count == 0
 
 
@@ -184,9 +172,7 @@ async def test_sync_interviews_fetches_and_stores(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await sync_module.sync_interviews()
@@ -222,9 +208,7 @@ async def test_sync_interviews_handles_pagination(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.side_effect = [page1_response, page2_response]
 
         await sync_module.sync_interviews()
@@ -274,9 +258,7 @@ async def test_sync_interviews_upserts_existing_interviews(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await sync_module.sync_interviews()

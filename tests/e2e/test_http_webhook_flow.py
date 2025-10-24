@@ -44,9 +44,9 @@ async def test_webhook_signature_verification_valid(
         event_id=str(uuid4()),
     )
     # Use existing interview_id to avoid FK violations
-    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = (
-        sample_interview["interview_id"]
-    )
+    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = sample_interview[
+        "interview_id"
+    ]
 
     body = json.dumps(payload)
     signature = sign_webhook(body, settings.ashby_webhook_secret)
@@ -65,9 +65,7 @@ async def test_webhook_signature_verification_valid(
 
 @pytest.mark.e2e
 @pytest.mark.asyncio
-async def test_webhook_to_database_flow(
-    http_client, clean_db, mock_ashby_api, sample_interview
-):
+async def test_webhook_to_database_flow(http_client, clean_db, mock_ashby_api, sample_interview):
     """Webhook received → schedule + events + assignments in DB."""
     from app.core.config import settings
 
@@ -80,9 +78,9 @@ async def test_webhook_to_database_flow(
         event_id=event_id,
     )
     # Use existing interview_id to avoid FK violations
-    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = (
-        sample_interview["interview_id"]
-    )
+    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = sample_interview[
+        "interview_id"
+    ]
 
     body = json.dumps(payload)
     signature = sign_webhook(body, settings.ashby_webhook_secret)
@@ -136,9 +134,9 @@ async def test_webhook_duplicate_idempotent(
     schedule_id = str(uuid4())
     payload = create_ashby_webhook_payload(schedule_id=schedule_id)
     # Use existing interview_id to avoid FK violations
-    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = (
-        sample_interview["interview_id"]
-    )
+    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = sample_interview[
+        "interview_id"
+    ]
 
     body = json.dumps(payload)
     signature = sign_webhook(body, settings.ashby_webhook_secret)
@@ -190,9 +188,7 @@ async def test_concurrent_webhooks_race_condition(
             event_id=str(uuid4()),
         )
         # Override interview_id to use existing one
-        payload["data"]["interviewSchedule"]["interviewEvents"][0][
-            "interviewId"
-        ] = interview_id
+        payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = interview_id
 
         body = json.dumps(payload)
         signature = sign_webhook(body, settings.ashby_webhook_secret)

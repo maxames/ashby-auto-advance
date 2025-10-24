@@ -165,10 +165,7 @@ class TestFeedbackSyncIntegration:
             assert str(feedback["application_id"]) == application_id
             assert str(feedback["event_id"]) == event_id
             assert str(feedback["interview_id"]) == str(interview_id)
-            assert (
-                str(feedback["interviewer_id"])
-                == sample_interview_event["interviewer_id"]
-            )
+            assert str(feedback["interviewer_id"]) == sample_interview_event["interviewer_id"]
 
             # Parse submitted_values if it's a string
             import json

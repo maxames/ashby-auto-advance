@@ -41,9 +41,7 @@ async def handle_slack_interactions(request: Request) -> Response:
         raise HTTPException(status_code=401, detail="Missing Slack signature headers")
 
     # Verify signature (security critical!)
-    if not verify_slack_signature(
-        settings.slack_signing_secret, body_str, timestamp, signature
-    ):
+    if not verify_slack_signature(settings.slack_signing_secret, body_str, timestamp, signature):
         logger.warning("slack_request_signature_verification_failed")
         raise HTTPException(status_code=401, detail="Invalid Slack signature")
 
@@ -67,9 +65,7 @@ async def handle_slack_interactions(request: Request) -> Response:
     return Response(status_code=200)
 
 
-async def handle_rejection_button(
-    payload: dict[str, Any], action: dict[str, Any]
-) -> None:
+async def handle_rejection_button(payload: dict[str, Any], action: dict[str, Any]) -> None:
     """
     Handle rejection button click - archive candidate and send rejection email.
 

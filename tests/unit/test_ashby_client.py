@@ -37,9 +37,7 @@ async def test_fetch_application_feedback_success():
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         result = await fetch_application_feedback(application_id)
@@ -68,9 +66,7 @@ async def test_fetch_application_feedback_pagination():
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.side_effect = [page1_response, page2_response]
 
         result = await fetch_application_feedback(application_id)
@@ -96,9 +92,7 @@ async def test_fetch_interview_stage_info_success():
         },
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         result = await fetch_interview_stage_info(stage_id)
@@ -117,9 +111,7 @@ async def test_fetch_interview_stage_info_not_found():
         "error": "Stage not found",
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         # Should raise exception for non-success response
@@ -146,9 +138,7 @@ async def test_advance_candidate_stage_success():
         },
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         result = await advance_candidate_stage(application_id, stage_id)
@@ -169,9 +159,7 @@ async def test_advance_candidate_stage_verifies_parameters():
         "results": {"id": application_id},
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await advance_candidate_stage(application_id, stage_id)
@@ -208,9 +196,7 @@ async def test_list_interview_stages_for_plan_success():
         ],
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         result = await list_interview_stages_for_plan(plan_id)
@@ -230,9 +216,7 @@ async def test_list_interview_stages_for_plan_empty():
         "results": [],
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         result = await list_interview_stages_for_plan(plan_id)
@@ -254,9 +238,7 @@ async def test_archive_candidate_success():
         },
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         result = await archive_candidate(application_id, archive_reason_id)
@@ -281,9 +263,7 @@ async def test_ashby_client_api_error_handling():
         "error": "Application not found",
     }
 
-    with patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         # Should raise exception for non-success response

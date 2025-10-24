@@ -389,9 +389,7 @@ class TestExecuteAdvancement:
             assert "API Error" in execution["failure_reason"]
 
     @pytest.mark.asyncio
-    async def test_marks_feedback_as_processed(
-        self, clean_db, sample_interview_event, monkeypatch
-    ):
+    async def test_marks_feedback_as_processed(self, clean_db, sample_interview_event, monkeypatch):
         """Test marks feedback as processed after advancement."""
         from unittest.mock import AsyncMock
 

@@ -188,9 +188,7 @@ class TestSyncFeedbackForApplication:
         # Mock empty response
         from app.services import feedback_sync
 
-        monkeypatch.setattr(
-            feedback_sync, "fetch_application_feedback", AsyncMock(return_value=[])
-        )
+        monkeypatch.setattr(feedback_sync, "fetch_application_feedback", AsyncMock(return_value=[]))
 
         # Sync
         count = await sync_feedback_for_application(application_id)
@@ -210,9 +208,7 @@ class TestSyncFeedbackForActiveSchedules:
         app1 = str(uuid4())
         app2 = str(uuid4())
         await create_test_schedule(clean_db, application_id=app1, status="Complete")
-        await create_test_schedule(
-            clean_db, application_id=app2, status="WaitingOnFeedback"
-        )
+        await create_test_schedule(clean_db, application_id=app2, status="WaitingOnFeedback")
         await create_test_schedule(clean_db, status="Scheduled")  # Should be ignored
 
         # Mock API
@@ -269,9 +265,7 @@ class TestSyncFeedbackForActiveSchedules:
         # Mock API
         from app.services import feedback_sync
 
-        monkeypatch.setattr(
-            feedback_sync, "fetch_application_feedback", AsyncMock(return_value=[])
-        )
+        monkeypatch.setattr(feedback_sync, "fetch_application_feedback", AsyncMock(return_value=[]))
 
         # Sync - should complete without error and log statistics
         # (Structlog doesn't emit to caplog, so we just verify it completes)

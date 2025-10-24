@@ -74,9 +74,7 @@ def create_mock_slack_request(payload: dict | str | None = None, is_upload=False
 async def test_slack_interactions_no_payload_returns_400(monkeypatch):
     """Missing payload returns 400."""
     # Mock signature verification to pass
-    monkeypatch.setattr(
-        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
-    )
+    monkeypatch.setattr("app.api.slack_interactions.verify_slack_signature", lambda *args: True)
 
     mock_request = create_mock_slack_request(payload=None)
 
@@ -89,9 +87,7 @@ async def test_slack_interactions_no_payload_returns_400(monkeypatch):
 async def test_slack_interactions_upload_file_payload_returns_400(monkeypatch):
     """UploadFile payload returns 400."""
     # Mock signature verification to pass
-    monkeypatch.setattr(
-        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
-    )
+    monkeypatch.setattr("app.api.slack_interactions.verify_slack_signature", lambda *args: True)
 
     mock_request = create_mock_slack_request(payload={}, is_upload=True)
 
@@ -104,9 +100,7 @@ async def test_slack_interactions_upload_file_payload_returns_400(monkeypatch):
 async def test_slack_interactions_malformed_json_returns_400(monkeypatch):
     """Invalid JSON in payload returns 400."""
     # Mock signature verification to pass
-    monkeypatch.setattr(
-        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
-    )
+    monkeypatch.setattr("app.api.slack_interactions.verify_slack_signature", lambda *args: True)
 
     mock_request = create_mock_slack_request(payload="invalid json {")
 
@@ -119,9 +113,7 @@ async def test_slack_interactions_malformed_json_returns_400(monkeypatch):
 async def test_slack_interactions_block_actions_send_rejection_handled(monkeypatch):
     """send_rejection action triggers handler."""
     # Mock signature verification to pass
-    monkeypatch.setattr(
-        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
-    )
+    monkeypatch.setattr("app.api.slack_interactions.verify_slack_signature", lambda *args: True)
 
     application_id = str(uuid4())
     payload = {
@@ -163,9 +155,7 @@ async def test_slack_interactions_block_actions_send_rejection_handled(monkeypat
 async def test_slack_interactions_unknown_action_ignored(monkeypatch):
     """Unknown action_id returns 200."""
     # Mock signature verification to pass
-    monkeypatch.setattr(
-        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
-    )
+    monkeypatch.setattr("app.api.slack_interactions.verify_slack_signature", lambda *args: True)
 
     payload = {
         "type": "block_actions",
@@ -184,9 +174,7 @@ async def test_slack_interactions_unknown_action_ignored(monkeypatch):
 async def test_slack_interactions_non_block_actions_returns_200(monkeypatch):
     """Other interaction types return 200."""
     # Mock signature verification to pass
-    monkeypatch.setattr(
-        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
-    )
+    monkeypatch.setattr("app.api.slack_interactions.verify_slack_signature", lambda *args: True)
 
     payload = {
         "type": "view_submission",  # Not block_actions
@@ -215,9 +203,7 @@ async def test_handle_rejection_button_success_updates_message():
 
     # Mock execute_rejection to return success
     with (
-        patch(
-            "app.services.advancement.execute_rejection", new_callable=AsyncMock
-        ) as mock_execute,
+        patch("app.services.advancement.execute_rejection", new_callable=AsyncMock) as mock_execute,
         patch(
             "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
         ) as mock_chat_update,
@@ -253,9 +239,7 @@ async def test_handle_rejection_button_failure_updates_message_with_error():
 
     # Mock execute_rejection to return failure
     with (
-        patch(
-            "app.services.advancement.execute_rejection", new_callable=AsyncMock
-        ) as mock_execute,
+        patch("app.services.advancement.execute_rejection", new_callable=AsyncMock) as mock_execute,
         patch(
             "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
         ) as mock_chat_update,

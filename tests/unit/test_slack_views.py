@@ -130,9 +130,7 @@ class TestBuildRejectionNotification:
             "name": "John Doe",
         }
 
-        ashby_url = (
-            "https://app.ashbyhq.com/candidate-searches/new/right-side/candidates/123"
-        )
+        ashby_url = "https://app.ashbyhq.com/candidate-searches/new/right-side/candidates/123"
 
         blocks = build_rejection_notification(
             candidate_data=candidate_data,

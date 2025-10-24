@@ -382,9 +382,7 @@ class TestWebhookFlow:
             assert event_v2["meeting_link"] == "https://zoom.us/meeting2"
 
     @pytest.mark.asyncio
-    async def test_webhook_with_missing_optional_fields(
-        self, clean_db, sample_interview
-    ):
+    async def test_webhook_with_missing_optional_fields(self, clean_db, sample_interview):
         """
         EDGE CASE: Some fields from Ashby are optional (meetingLink, location, etc).
         Test that webhook processes correctly with minimal data.

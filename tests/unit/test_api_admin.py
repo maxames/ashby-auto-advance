@@ -13,9 +13,7 @@ from app.api import admin as admin_api
 @pytest.mark.asyncio
 async def test_admin_sync_forms_triggers_sync():
     """/admin/sync-forms calls sync_feedback_forms."""
-    with patch(
-        "app.api.admin.sync_feedback_forms", new_callable=AsyncMock
-    ) as mock_sync:
+    with patch("app.api.admin.sync_feedback_forms", new_callable=AsyncMock) as mock_sync:
         response = await admin_api.admin_sync_forms()
 
         mock_sync.assert_called_once()
@@ -178,9 +176,7 @@ async def test_admin_trigger_advancement_by_schedule_id():
     ) as mock_evaluate:
         mock_evaluate.return_value = mock_evaluation
 
-        response = await admin_api.trigger_advancement_evaluation(
-            schedule_id=schedule_id
-        )
+        response = await admin_api.trigger_advancement_evaluation(schedule_id=schedule_id)
 
         mock_evaluate.assert_called_once_with(schedule_id)
         assert response["schedule_id"] == schedule_id
@@ -201,14 +197,16 @@ async def test_admin_trigger_advancement_by_application_id():
 
     mock_evaluation = {"ready": True, "blocking_reason": None}
 
-    with patch(
-        "app.api.admin.admin_service.get_schedules_for_application",
-        new_callable=AsyncMock,
-    ) as mock_get_schedules, patch(
-        "app.services.advancement.evaluate_schedule_for_advancement",
-        new_callable=AsyncMock,
-    ) as mock_evaluate:
-
+    with (
+        patch(
+            "app.api.admin.admin_service.get_schedules_for_application",
+            new_callable=AsyncMock,
+        ) as mock_get_schedules,
+        patch(
+            "app.services.advancement.evaluate_schedule_for_advancement",
+            new_callable=AsyncMock,
+        ) as mock_evaluate,
+    ):
         mock_get_schedules.return_value = mock_schedules
         mock_evaluate.return_value = mock_evaluation
 

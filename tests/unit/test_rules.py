@@ -126,9 +126,7 @@ class TestEvaluateRuleRequirements:
     """Tests for evaluate_rule_requirements function."""
 
     @pytest.mark.asyncio
-    async def test_all_requirements_pass(
-        self, clean_db, sample_interview, sample_interview_event
-    ):
+    async def test_all_requirements_pass(self, clean_db, sample_interview, sample_interview_event):
         """Test when all requirements are met."""
         # Create rule matching the interview
         rule_data = await create_test_rule(
@@ -214,10 +212,7 @@ class TestEvaluateRuleRequirements:
         assert result["all_passed"] is False
         assert len(result["results"]) == 1
         assert result["results"][0]["passed"] is False
-        assert (
-            result["results"][0]["blocking_reason"]
-            == "required_interview_not_scheduled"
-        )
+        assert result["results"][0]["blocking_reason"] == "required_interview_not_scheduled"
 
     @pytest.mark.asyncio
     async def test_optional_interview_not_scheduled_skips(self, clean_db):
@@ -437,9 +432,7 @@ class TestEvaluateRuleRequirements:
         assert result["all_passed"] is False
 
     @pytest.mark.asyncio
-    async def test_different_operators(
-        self, clean_db, sample_interview, sample_interview_event
-    ):
+    async def test_different_operators(self, clean_db, sample_interview, sample_interview_event):
         """Test different comparison operators work correctly."""
         operators_and_values = [
             (">=", "3", 3, True),  # Equal to threshold
@@ -505,9 +498,9 @@ class TestEvaluateRuleRequirements:
                 ],
             )
 
-            assert (
-                result["all_passed"] is should_pass
-            ), f"Operator {operator} with threshold {threshold} and value {score_value} should {'pass' if should_pass else 'fail'}"
+            assert result["all_passed"] is should_pass, (
+                f"Operator {operator} with threshold {threshold} and value {score_value} should {'pass' if should_pass else 'fail'}"
+            )
 
 
 class TestGetTargetStageForRule:

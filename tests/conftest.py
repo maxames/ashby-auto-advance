@@ -22,9 +22,7 @@ os.environ.setdefault("SLACK_BOT_TOKEN", "xoxb-test-token")
 os.environ.setdefault("SLACK_SIGNING_SECRET", "test_signing_secret")
 os.environ.setdefault("DATABASE_URL", "postgresql://localhost:5432/ashby_feedback_test")
 os.environ.setdefault("LOG_LEVEL", "INFO")
-os.environ.setdefault(
-    "DEFAULT_ARCHIVE_REASON_ID", "00000000-0000-0000-0000-000000000000"
-)
+os.environ.setdefault("DEFAULT_ARCHIVE_REASON_ID", "00000000-0000-0000-0000-000000000000")
 
 
 @pytest_asyncio.fixture
@@ -167,9 +165,7 @@ async def sample_feedback_form(clean_db):
 
 
 @pytest_asyncio.fixture
-async def sample_interview_event(
-    clean_db, sample_interview, sample_slack_user
-) -> dict[str, Any]:
+async def sample_interview_event(clean_db, sample_interview, sample_slack_user) -> dict[str, Any]:
     """Create a complete interview event for feedback tests."""
     schedule_id = uuid4()
     event_id = uuid4()
@@ -355,9 +351,7 @@ async def sample_feedback_submission(clean_db, sample_interview_event):
 
 def pytest_configure(config):
     """Register custom markers."""
-    config.addinivalue_line(
-        "markers", "e2e: marks tests as end-to-end HTTP tests (slower)"
-    )
+    config.addinivalue_line("markers", "e2e: marks tests as end-to-end HTTP tests (slower)")
     config.addinivalue_line("markers", "unit: marks tests as unit tests (fast)")
     config.addinivalue_line(
         "markers", "integration: marks tests as integration tests (medium speed)"

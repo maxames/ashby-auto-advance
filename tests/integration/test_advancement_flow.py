@@ -71,9 +71,7 @@ class TestAdvancementFlow:
         await sync_feedback_for_application(sample_interview_event["application_id"])
 
         # 3. Mock advancement API
-        mock_advance = AsyncMock(
-            return_value={"id": sample_interview_event["application_id"]}
-        )
+        mock_advance = AsyncMock(return_value={"id": sample_interview_event["application_id"]})
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
 
         # 4. Run evaluation (simulating scheduled job)

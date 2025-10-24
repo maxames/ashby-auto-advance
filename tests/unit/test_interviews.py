@@ -66,9 +66,7 @@ async def test_process_schedule_update_cancelled_status(clean_db):
         "applicationId": str(uuid4()),
     }
 
-    with patch(
-        "app.services.interviews.delete_schedule", new_callable=AsyncMock
-    ) as mock_delete:
+    with patch("app.services.interviews.delete_schedule", new_callable=AsyncMock) as mock_delete:
         await process_schedule_update(schedule)
 
         mock_delete.assert_called_once_with(schedule_id)
@@ -83,12 +81,12 @@ async def test_process_schedule_update_invalid_status_ignored(clean_db):
         "applicationId": str(uuid4()),
     }
 
-    with patch(
-        "app.services.interviews.delete_schedule", new_callable=AsyncMock
-    ) as mock_delete, patch(
-        "app.services.interviews.upsert_schedule_with_events", new_callable=AsyncMock
-    ) as mock_upsert:
-
+    with (
+        patch("app.services.interviews.delete_schedule", new_callable=AsyncMock) as mock_delete,
+        patch(
+            "app.services.interviews.upsert_schedule_with_events", new_callable=AsyncMock
+        ) as mock_upsert,
+    ):
         await process_schedule_update(schedule)
 
         # Neither delete nor upsert should be called
@@ -225,9 +223,7 @@ async def test_upsert_schedule_updates_existing_schedule(clean_db):
 
 
 @pytest.mark.asyncio
-async def test_upsert_schedule_inserts_events_and_assignments(
-    clean_db, sample_interview
-):
+async def test_upsert_schedule_inserts_events_and_assignments(clean_db, sample_interview):
     """Events and interviewers created."""
     schedule_id = str(uuid4())
     app_id = str(uuid4())
@@ -276,12 +272,12 @@ async def test_upsert_schedule_inserts_events_and_assignments(
     }
 
     # Mock API calls
-    with patch(
-        "app.clients.ashby.fetch_interview_stage_info", new_callable=AsyncMock
-    ) as mock_stage_info, patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_ashby_post:
-
+    with (
+        patch(
+            "app.clients.ashby.fetch_interview_stage_info", new_callable=AsyncMock
+        ) as mock_stage_info,
+        patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_ashby_post,
+    ):
         mock_stage_info.return_value = {"interviewPlanId": str(uuid4())}
         # Mock the interview.info call
         mock_ashby_post.return_value = {
@@ -303,9 +299,7 @@ async def test_upsert_schedule_inserts_events_and_assignments(
 
     # Verify event and assignment exist in database
     async with clean_db.acquire() as conn:
-        event = await conn.fetchrow(
-            "SELECT * FROM interview_events WHERE event_id = $1", event_id
-        )
+        event = await conn.fetchrow("SELECT * FROM interview_events WHERE event_id = $1", event_id)
         assert event is not None
         assert str(event["schedule_id"]) == schedule_id
 
@@ -347,12 +341,12 @@ async def test_upsert_schedule_fetches_advancement_fields(clean_db):
     }
 
     # Mock API calls
-    with patch(
-        "app.clients.ashby.fetch_interview_stage_info", new_callable=AsyncMock
-    ) as mock_stage_info, patch(
-        "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
-    ) as mock_ashby_post:
-
+    with (
+        patch(
+            "app.clients.ashby.fetch_interview_stage_info", new_callable=AsyncMock
+        ) as mock_stage_info,
+        patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_ashby_post,
+    ):
         mock_stage_info.return_value = {"interviewPlanId": plan_id}
         mock_ashby_post.return_value = {
             "success": True,
