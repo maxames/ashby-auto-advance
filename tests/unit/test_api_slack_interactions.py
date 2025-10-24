@@ -17,28 +17,68 @@ from app.api.slack_interactions import (
 )
 
 
-@pytest.mark.asyncio
-async def test_slack_interactions_no_payload_returns_400():
-    """Missing payload returns 400."""
-    mock_request = AsyncMock(spec=Request)
-    # Form with no payload key
-    mock_request.form = AsyncMock(return_value={"other_key": "value"})
+def create_mock_slack_request(payload: dict | str | None = None, is_upload=False):
+    """Create mock Slack request with signature verification bypassed.
 
-    response = await handle_slack_interactions(mock_request)
+    Args:
+        payload: Payload dict/string or None
+        is_upload: Whether payload is an UploadFile
 
-    assert response.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_slack_interactions_upload_file_payload_returns_400():
-    """UploadFile payload returns 400."""
-    mock_request = AsyncMock(spec=Request)
-    # Create a mock UploadFile
+    Returns:
+        Mock request with body, headers, and form data
+    """
     import io
+    import time
 
-    mock_file = io.BytesIO(b"test content")
-    mock_upload = UploadFile(file=mock_file, filename="test.txt")
-    mock_request.form = AsyncMock(return_value={"payload": mock_upload})
+    from starlette.datastructures import Headers
+
+    mock_request = AsyncMock(spec=Request)
+
+    # Mock body for signature verification
+    if payload is None:
+        body_str = ""
+    elif isinstance(payload, dict):
+        body_str = f"payload={json.dumps(payload)}"
+    else:
+        body_str = f"payload={payload}"
+
+    mock_request.body = AsyncMock(return_value=body_str.encode())
+
+    # Mock headers with valid signature data
+    timestamp = str(int(time.time()))
+    mock_request.headers = Headers(
+        {
+            "X-Slack-Request-Timestamp": timestamp,
+            "X-Slack-Signature": "v0=valid_signature_for_testing",
+        }
+    )
+
+    # Mock form data
+    if is_upload:
+        mock_file = io.BytesIO(b"test content")
+        mock_upload = UploadFile(file=mock_file, filename="test.txt")
+        form_data = {"payload": mock_upload}
+    elif payload is None:
+        form_data = {"other_key": "value"}  # No payload key
+    elif isinstance(payload, dict):
+        form_data = {"payload": json.dumps(payload)}
+    else:
+        form_data = {"payload": payload}
+
+    mock_request.form = AsyncMock(return_value=form_data)
+
+    return mock_request
+
+
+@pytest.mark.asyncio
+async def test_slack_interactions_no_payload_returns_400(monkeypatch):
+    """Missing payload returns 400."""
+    # Mock signature verification to pass
+    monkeypatch.setattr(
+        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
+    )
+
+    mock_request = create_mock_slack_request(payload=None)
 
     response = await handle_slack_interactions(mock_request)
 
@@ -46,11 +86,29 @@ async def test_slack_interactions_upload_file_payload_returns_400():
 
 
 @pytest.mark.asyncio
-async def test_slack_interactions_malformed_json_returns_400():
+async def test_slack_interactions_upload_file_payload_returns_400(monkeypatch):
+    """UploadFile payload returns 400."""
+    # Mock signature verification to pass
+    monkeypatch.setattr(
+        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
+    )
+
+    mock_request = create_mock_slack_request(payload={}, is_upload=True)
+
+    response = await handle_slack_interactions(mock_request)
+
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_slack_interactions_malformed_json_returns_400(monkeypatch):
     """Invalid JSON in payload returns 400."""
-    mock_request = AsyncMock(spec=Request)
-    # Return invalid JSON string
-    mock_request.form = AsyncMock(return_value={"payload": "invalid json {"})
+    # Mock signature verification to pass
+    monkeypatch.setattr(
+        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
+    )
+
+    mock_request = create_mock_slack_request(payload="invalid json {")
 
     # Should raise JSONDecodeError
     with pytest.raises(json.JSONDecodeError):
@@ -58,8 +116,13 @@ async def test_slack_interactions_malformed_json_returns_400():
 
 
 @pytest.mark.asyncio
-async def test_slack_interactions_block_actions_send_rejection_handled():
+async def test_slack_interactions_block_actions_send_rejection_handled(monkeypatch):
     """send_rejection action triggers handler."""
+    # Mock signature verification to pass
+    monkeypatch.setattr(
+        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
+    )
+
     application_id = str(uuid4())
     payload = {
         "type": "block_actions",
@@ -74,8 +137,7 @@ async def test_slack_interactions_block_actions_send_rejection_handled():
         "user": {"id": "U123456"},
     }
 
-    mock_request = AsyncMock(spec=Request)
-    mock_request.form = AsyncMock(return_value={"payload": json.dumps(payload)})
+    mock_request = create_mock_slack_request(payload)
 
     with patch(
         "app.api.slack_interactions.handle_rejection_button", new_callable=AsyncMock
@@ -98,15 +160,19 @@ async def test_slack_interactions_block_actions_send_rejection_handled():
 
 
 @pytest.mark.asyncio
-async def test_slack_interactions_unknown_action_ignored():
+async def test_slack_interactions_unknown_action_ignored(monkeypatch):
     """Unknown action_id returns 200."""
+    # Mock signature verification to pass
+    monkeypatch.setattr(
+        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
+    )
+
     payload = {
         "type": "block_actions",
         "actions": [{"action_id": "unknown_action", "value": "some_value"}],
     }
 
-    mock_request = AsyncMock(spec=Request)
-    mock_request.form = AsyncMock(return_value={"payload": json.dumps(payload)})
+    mock_request = create_mock_slack_request(payload)
 
     response = await handle_slack_interactions(mock_request)
 
@@ -115,15 +181,19 @@ async def test_slack_interactions_unknown_action_ignored():
 
 
 @pytest.mark.asyncio
-async def test_slack_interactions_non_block_actions_returns_200():
+async def test_slack_interactions_non_block_actions_returns_200(monkeypatch):
     """Other interaction types return 200."""
+    # Mock signature verification to pass
+    monkeypatch.setattr(
+        "app.api.slack_interactions.verify_slack_signature", lambda *args: True
+    )
+
     payload = {
         "type": "view_submission",  # Not block_actions
         "view": {"id": "V123456"},
     }
 
-    mock_request = AsyncMock(spec=Request)
-    mock_request.form = AsyncMock(return_value={"payload": json.dumps(payload)})
+    mock_request = create_mock_slack_request(payload)
 
     response = await handle_slack_interactions(mock_request)
 
@@ -144,12 +214,14 @@ async def test_handle_rejection_button_success_updates_message():
     action = {"value": json.dumps({"application_id": application_id})}
 
     # Mock execute_rejection to return success
-    with patch(
-        "app.services.advancement.execute_rejection", new_callable=AsyncMock
-    ) as mock_execute, patch(
-        "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
-    ) as mock_chat_update:
-
+    with (
+        patch(
+            "app.services.advancement.execute_rejection", new_callable=AsyncMock
+        ) as mock_execute,
+        patch(
+            "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
+        ) as mock_chat_update,
+    ):
         mock_execute.return_value = {"success": True}
 
         await handle_rejection_button(payload, action)
@@ -180,12 +252,14 @@ async def test_handle_rejection_button_failure_updates_message_with_error():
     action = {"value": json.dumps({"application_id": application_id})}
 
     # Mock execute_rejection to return failure
-    with patch(
-        "app.services.advancement.execute_rejection", new_callable=AsyncMock
-    ) as mock_execute, patch(
-        "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
-    ) as mock_chat_update:
-
+    with (
+        patch(
+            "app.services.advancement.execute_rejection", new_callable=AsyncMock
+        ) as mock_execute,
+        patch(
+            "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
+        ) as mock_chat_update,
+    ):
         mock_execute.return_value = {"success": False, "error": "Candidate not found"}
 
         await handle_rejection_button(payload, action)
