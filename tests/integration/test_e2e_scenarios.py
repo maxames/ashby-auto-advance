@@ -18,7 +18,9 @@ class TestPanelInterviewScenarios:
     """Test scenarios with multiple interviewers (panel interviews)."""
 
     @pytest.mark.asyncio
-    async def test_panel_interview_all_pass_advances(self, clean_db, sample_interview, monkeypatch):
+    async def test_panel_interview_all_pass_advances(
+        self, clean_db, sample_interview, monkeypatch
+    ):
         """Panel: 3 interviewers all pass (score >= 3) → should advance."""
         # Setup: Create rule requiring score >= 3
         rule_data = await create_test_rule(
@@ -91,6 +93,9 @@ class TestPanelInterviewScenarios:
         from app.services import advancement
 
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         # Execute: Run evaluation
         await process_advancement_evaluations()
@@ -108,7 +113,9 @@ class TestPanelInterviewScenarios:
             assert execution["execution_status"] == "success"
 
     @pytest.mark.asyncio
-    async def test_panel_interview_one_fails_blocks(self, clean_db, sample_interview, monkeypatch):
+    async def test_panel_interview_one_fails_blocks(
+        self, clean_db, sample_interview, monkeypatch
+    ):
         """Panel: 2 pass, 1 fails → should send rejection notification."""
         # Setup: Create rule requiring score >= 3
         rule_data = await create_test_rule(
@@ -353,6 +360,9 @@ class TestSequentialInterviewScenarios:
         from app.services import advancement
 
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         # Execute
         await process_advancement_evaluations()
@@ -522,9 +532,13 @@ class TestEdgeCaseScenarios:
     """Test edge cases and error conditions."""
 
     @pytest.mark.asyncio
-    async def test_thirty_minute_wait_window(self, clean_db, sample_interview, monkeypatch):
+    async def test_thirty_minute_wait_window(
+        self, clean_db, sample_interview, monkeypatch
+    ):
         """Feedback submitted within 30min wait → should not evaluate yet."""
-        rule_data = await create_test_rule(clean_db, interview_id=sample_interview["interview_id"])
+        rule_data = await create_test_rule(
+            clean_db, interview_id=sample_interview["interview_id"]
+        )
 
         schedule_data = await create_test_schedule(
             clean_db,
@@ -582,6 +596,9 @@ class TestEdgeCaseScenarios:
         from app.services import advancement
 
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         # Execute: Run evaluation
         await process_advancement_evaluations()
@@ -644,7 +661,9 @@ class TestEdgeCaseScenarios:
             assert schedule["last_evaluated_for_advancement_at"] is not None
 
     @pytest.mark.asyncio
-    async def test_duplicate_feedback_submission_idempotent(self, clean_db, sample_interview):
+    async def test_duplicate_feedback_submission_idempotent(
+        self, clean_db, sample_interview
+    ):
         """Same feedback submitted twice → processed idempotently."""
         schedule_data = await create_test_schedule(clean_db, status="Complete")
 
@@ -698,7 +717,9 @@ class TestEdgeCaseScenarios:
             assert count == 1
 
     @pytest.mark.asyncio
-    async def test_advancement_with_custom_threshold(self, clean_db, sample_interview, monkeypatch):
+    async def test_advancement_with_custom_threshold(
+        self, clean_db, sample_interview, monkeypatch
+    ):
         """Rule with threshold = 4.5 → only scores >= 4.5 advance."""
         # Create rule with high threshold
         rule_data = await create_test_rule(
@@ -764,6 +785,9 @@ class TestEdgeCaseScenarios:
         from app.services import advancement
 
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         await process_advancement_evaluations()
 
@@ -823,6 +847,9 @@ class TestEdgeCaseScenarios:
         )
 
         mock_advance.reset_mock()
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
         await process_advancement_evaluations()
 
         # Assert: Should advance (score high enough)
@@ -834,7 +861,9 @@ class TestEdgeCaseScenarios:
     ):
         """Ashby API times out → logs error but continues processing."""
 
-        rule_data = await create_test_rule(clean_db, interview_id=sample_interview["interview_id"])
+        rule_data = await create_test_rule(
+            clean_db, interview_id=sample_interview["interview_id"]
+        )
 
         schedule_data = await create_test_schedule(
             clean_db,
@@ -894,6 +923,9 @@ class TestEdgeCaseScenarios:
         from app.services import advancement
 
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_timeout)
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         # Execute: Should not crash
         await process_advancement_evaluations()
@@ -993,6 +1025,9 @@ class TestEdgeCaseScenarios:
         from app.services import advancement
 
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         await process_advancement_evaluations()
 

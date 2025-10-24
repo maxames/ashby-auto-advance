@@ -57,7 +57,12 @@ class TestFeedbackSyncIntegration:
                 "applicationId": application_id,
                 "interviewEventId": event_id,
                 "interviewId": interview_id,
-                "submittedByUserId": interviewer_id,
+                "submittedByUser": {
+                    "id": interviewer_id,
+                    "firstName": "Test",
+                    "lastName": "Interviewer",
+                    "email": "test@example.com",
+                },
                 "submittedAt": datetime.now(UTC).isoformat(),
                 "submittedValues": {
                     "overall_score": 4,
@@ -70,7 +75,12 @@ class TestFeedbackSyncIntegration:
                 "applicationId": application_id,
                 "interviewEventId": event_id,
                 "interviewId": interview_id,
-                "submittedByUserId": str(uuid4()),  # Different interviewer
+                "submittedByUser": {
+                    "id": str(uuid4()),  # Different interviewer
+                    "firstName": "Test",
+                    "lastName": "Interviewer",
+                    "email": "test@example.com",
+                },
                 "submittedAt": datetime.now(UTC).isoformat(),
                 "submittedValues": {
                     "overall_score": 3,
@@ -137,7 +147,12 @@ class TestFeedbackSyncIntegration:
                 "applicationId": application_id,
                 "interviewEventId": event_id,
                 "interviewId": str(interview_id),
-                "submittedByUserId": sample_interview_event["interviewer_id"],
+                "submittedByUser": {
+                    "id": sample_interview_event["interviewer_id"],
+                    "firstName": "Test",
+                    "lastName": "Interviewer",
+                    "email": "test@example.com",
+                },
                 "submittedAt": submitted_at,
                 "submittedValues": {"overall_score": 5, "notes": "Excellent candidate"},
             }
@@ -165,7 +180,10 @@ class TestFeedbackSyncIntegration:
             assert str(feedback["application_id"]) == application_id
             assert str(feedback["event_id"]) == event_id
             assert str(feedback["interview_id"]) == str(interview_id)
-            assert str(feedback["interviewer_id"]) == sample_interview_event["interviewer_id"]
+            assert (
+                str(feedback["interviewer_id"])
+                == sample_interview_event["interviewer_id"]
+            )
 
             # Parse submitted_values if it's a string
             import json
@@ -223,7 +241,12 @@ class TestFeedbackSyncIntegration:
                 "applicationId": application_id,
                 "interviewEventId": event_id,
                 "interviewId": interview_id,
-                "submittedByUserId": str(uuid4()),
+                "submittedByUser": {
+                    "id": str(uuid4()),
+                    "firstName": "Test",
+                    "lastName": "Interviewer",
+                    "email": "test@example.com",
+                },
                 "submittedAt": datetime.now(UTC).isoformat(),
                 "submittedValues": {"overall_score": i},
             }

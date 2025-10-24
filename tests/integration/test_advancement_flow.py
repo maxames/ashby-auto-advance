@@ -55,7 +55,12 @@ class TestAdvancementFlow:
             "applicationId": sample_interview_event["application_id"],
             "interviewEventId": sample_interview_event["event_id"],
             "interviewId": sample_interview["interview_id"],
-            "submittedByUserId": sample_interview_event["interviewer_id"],
+            "submittedByUser": {
+                "id": sample_interview_event["interviewer_id"],
+                "firstName": "Test",
+                "lastName": "Interviewer",
+                "email": "test@example.com",
+            },
             "submittedAt": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
             "submittedValues": {"overall_score": 4},
         }
@@ -71,8 +76,15 @@ class TestAdvancementFlow:
         await sync_feedback_for_application(sample_interview_event["application_id"])
 
         # 3. Mock advancement API
-        mock_advance = AsyncMock(return_value={"id": sample_interview_event["application_id"]})
+        mock_advance = AsyncMock(
+            return_value={"id": sample_interview_event["application_id"]}
+        )
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+
+        # Disable dry-run mode for this test
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
+        )
 
         # 4. Run evaluation (simulating scheduled job)
         await process_advancement_evaluations()
@@ -304,6 +316,11 @@ class TestAdvancementFlow:
             interview_id=sample_interview["interview_id"],
             submitted_values={"overall_score": 4},
             submitted_at=datetime.now(UTC) - timedelta(hours=1),
+        )
+
+        # Disable dry-run mode for actual advancement test
+        monkeypatch.setattr(
+            "app.services.advancement.settings.advancement_dry_run_mode", False
         )
 
         # Run evaluation again

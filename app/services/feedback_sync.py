@@ -57,6 +57,20 @@ async def sync_feedback_for_application(application_id: str) -> int:
                 )
                 continue
 
+            # Extract and validate interviewer_id (required by schema)
+            interviewer_id = (
+                submission.get("submittedByUser", {}).get("id")
+                if submission.get("submittedByUser")
+                else None
+            )
+
+            if not interviewer_id:
+                logger.debug(
+                    "feedback_skipped_no_interviewer",
+                    feedback_id=submission["id"],
+                )
+                continue
+
             # Insert with ON CONFLICT DO NOTHING for idempotency
             result = await db.execute(
                 """
@@ -77,11 +91,7 @@ async def sync_feedback_for_application(application_id: str) -> int:
                 submission["id"],
                 submission["applicationId"],
                 event_id,
-                (
-                    submission.get("submittedByUser", {}).get("id")
-                    if submission.get("submittedByUser")
-                    else None
-                ),
+                interviewer_id,
                 submission["interviewId"],
                 submission["submittedAt"],
                 json.dumps(submission["submittedValues"]),

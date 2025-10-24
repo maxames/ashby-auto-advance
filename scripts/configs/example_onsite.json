@@ -2,7 +2,7 @@
   "name": "Onsite Interview",
   "description": "Full onsite with multiple interviews - all must pass to advance to offer stage",
   "job_id": null,
-  "interview_plan_id": "PASTE_UUID_HERE",
+  "interview_plan_id": "PASTE_INTERVIEW_PLAN_UUID_HERE",
   "interview_stage_id": "PASTE_UUID_HERE",
   "target_stage_id": "PASTE_OFFER_STAGE_UUID_HERE",
   "interviews": [

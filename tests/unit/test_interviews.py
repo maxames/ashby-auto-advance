@@ -66,7 +66,9 @@ async def test_process_schedule_update_cancelled_status(clean_db):
         "applicationId": str(uuid4()),
     }
 
-    with patch("app.services.interviews.delete_schedule", new_callable=AsyncMock) as mock_delete:
+    with patch(
+        "app.services.interviews.delete_schedule", new_callable=AsyncMock
+    ) as mock_delete:
         await process_schedule_update(schedule)
 
         mock_delete.assert_called_once_with(schedule_id)
@@ -82,9 +84,12 @@ async def test_process_schedule_update_invalid_status_ignored(clean_db):
     }
 
     with (
-        patch("app.services.interviews.delete_schedule", new_callable=AsyncMock) as mock_delete,
         patch(
-            "app.services.interviews.upsert_schedule_with_events", new_callable=AsyncMock
+            "app.services.interviews.delete_schedule", new_callable=AsyncMock
+        ) as mock_delete,
+        patch(
+            "app.services.interviews.upsert_schedule_with_events",
+            new_callable=AsyncMock,
         ) as mock_upsert,
     ):
         await process_schedule_update(schedule)
@@ -223,7 +228,9 @@ async def test_upsert_schedule_updates_existing_schedule(clean_db):
 
 
 @pytest.mark.asyncio
-async def test_upsert_schedule_inserts_events_and_assignments(clean_db, sample_interview):
+async def test_upsert_schedule_inserts_events_and_assignments(
+    clean_db, sample_interview
+):
     """Events and interviewers created."""
     schedule_id = str(uuid4())
     app_id = str(uuid4())
@@ -276,7 +283,9 @@ async def test_upsert_schedule_inserts_events_and_assignments(clean_db, sample_i
         patch(
             "app.clients.ashby.fetch_interview_stage_info", new_callable=AsyncMock
         ) as mock_stage_info,
-        patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_ashby_post,
+        patch(
+            "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
+        ) as mock_ashby_post,
     ):
         mock_stage_info.return_value = {"interviewPlanId": str(uuid4())}
         # Mock the interview.info call
@@ -299,7 +308,9 @@ async def test_upsert_schedule_inserts_events_and_assignments(clean_db, sample_i
 
     # Verify event and assignment exist in database
     async with clean_db.acquire() as conn:
-        event = await conn.fetchrow("SELECT * FROM interview_events WHERE event_id = $1", event_id)
+        event = await conn.fetchrow(
+            "SELECT * FROM interview_events WHERE event_id = $1", event_id
+        )
         assert event is not None
         assert str(event["schedule_id"]) == schedule_id
 
@@ -345,17 +356,32 @@ async def test_upsert_schedule_fetches_advancement_fields(clean_db):
         patch(
             "app.clients.ashby.fetch_interview_stage_info", new_callable=AsyncMock
         ) as mock_stage_info,
-        patch("app.clients.ashby.ashby_client.post", new_callable=AsyncMock) as mock_ashby_post,
+        patch(
+            "app.clients.ashby.ashby_client.post", new_callable=AsyncMock
+        ) as mock_ashby_post,
     ):
         mock_stage_info.return_value = {"interviewPlanId": plan_id}
-        mock_ashby_post.return_value = {
-            "success": True,
-            "results": {
-                "id": interview_id,
-                "title": "Test Interview",
-                "jobId": job_id,
-            },
-        }
+
+        # Mock both interview.info and application.info API calls
+        def mock_api_call(endpoint, data):
+            if endpoint == "interview.info":
+                return {
+                    "success": True,
+                    "results": {
+                        "id": interview_id,
+                        "title": "Test Interview",
+                    },
+                }
+            elif endpoint == "application.info":
+                return {
+                    "success": True,
+                    "results": {
+                        "job": {"id": job_id},
+                    },
+                }
+            return {"success": False}
+
+        mock_ashby_post.side_effect = mock_api_call
 
         await upsert_schedule_with_events(schedule, schedule_id, "Scheduled")
 
