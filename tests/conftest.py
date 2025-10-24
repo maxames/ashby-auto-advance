@@ -351,3 +351,14 @@ async def sample_feedback_submission(clean_db, sample_interview_event):
         "interviewer_id": sample_interview_event["interviewer_id"],
         "submitted_values": {"overall_score": 4, "technical_skills": 5},
     }
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "e2e: marks tests as end-to-end HTTP tests (slower)"
+    )
+    config.addinivalue_line("markers", "unit: marks tests as unit tests (fast)")
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests (medium speed)"
+    )

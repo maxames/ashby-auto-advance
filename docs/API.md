@@ -14,7 +14,7 @@ https://your-domain.com  # Production
 All Ashby webhook requests include an HMAC-SHA256 signature for verification:
 
 ```
-x-ashby-signature: sha256=<hex_digest>
+Ashby-Signature: sha256=<hex_digest>
 ```
 
 The signature is computed using:

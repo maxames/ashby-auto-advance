@@ -80,6 +80,18 @@ jobs:
         run: |
           pytest --cov=app --cov-report=xml --cov-report=term-missing
 
+      - name: Run E2E tests
+        env:
+          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/test_db
+          ASHBY_WEBHOOK_SECRET: test_webhook_secret_for_ci
+          ASHBY_API_KEY: test_api_key_for_ci
+          SLACK_BOT_TOKEN: xoxb-test-token
+          SLACK_SIGNING_SECRET: test_signing_secret
+          DEFAULT_ARCHIVE_REASON_ID: 00000000-0000-0000-0000-000000000000
+          LOG_LEVEL: INFO
+        run: |
+          pytest tests/e2e -v -m e2e --tb=short
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:

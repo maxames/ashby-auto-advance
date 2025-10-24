@@ -6,11 +6,13 @@ import asyncio
 import json
 from typing import Any
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.datastructures import UploadFile
 from structlog import get_logger
 
 from app.clients.slack import slack_client
+from app.core.config import settings
+from app.utils.security import verify_slack_signature
 
 logger = get_logger()
 router = APIRouter()
@@ -26,6 +28,26 @@ async def handle_slack_interactions(request: Request) -> Response:
     Handles:
     - block_actions: Button clicks (send rejection)
     """
+    # Get raw body for signature verification
+    body = await request.body()
+    body_str = body.decode("utf-8")
+
+    # Extract signature headers
+    timestamp = request.headers.get("X-Slack-Request-Timestamp")
+    signature = request.headers.get("X-Slack-Signature")
+
+    if not timestamp or not signature:
+        logger.warning("slack_request_missing_signature_headers")
+        raise HTTPException(status_code=401, detail="Missing Slack signature headers")
+
+    # Verify signature (security critical!)
+    if not verify_slack_signature(
+        settings.slack_signing_secret, body_str, timestamp, signature
+    ):
+        logger.warning("slack_request_signature_verification_failed")
+        raise HTTPException(status_code=401, detail="Invalid Slack signature")
+
+    # Parse payload after verification
     form_data = await request.form()
     payload_str = form_data.get("payload")
     if not payload_str or isinstance(payload_str, UploadFile):
@@ -45,7 +67,9 @@ async def handle_slack_interactions(request: Request) -> Response:
     return Response(status_code=200)
 
 
-async def handle_rejection_button(payload: dict[str, Any], action: dict[str, Any]) -> None:
+async def handle_rejection_button(
+    payload: dict[str, Any], action: dict[str, Any]
+) -> None:
     """
     Handle rejection button click - archive candidate and send rejection email.
 

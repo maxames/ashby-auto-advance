@@ -51,24 +51,29 @@ def create_feedback_draft(
 
 
 def create_ashby_webhook_payload(
-    schedule_id: str = "schedule_test",
+    schedule_id: str | None = None,
     status: str = "Scheduled",
-    event_id: str = "event_test",
+    event_id: str | None = None,
 ) -> dict:
-    """Create test Ashby webhook payload."""
+    """Create test Ashby webhook payload with valid UUIDs."""
+    if schedule_id is None:
+        schedule_id = str(uuid4())
+    if event_id is None:
+        event_id = str(uuid4())
+
     return {
         "action": "interviewScheduleUpdate",
         "data": {
             "interviewSchedule": {
                 "id": schedule_id,
                 "status": status,
-                "applicationId": "app_test",
-                "candidateId": "candidate_test",
-                "interviewStageId": "stage_test",
+                "applicationId": str(uuid4()),
+                "candidateId": str(uuid4()),
+                "interviewStageId": str(uuid4()),
                 "interviewEvents": [
                     {
                         "id": event_id,
-                        "interviewId": "interview_test",
+                        "interviewId": str(uuid4()),
                         "startTime": "2024-10-20T14:00:00.000Z",
                         "endTime": "2024-10-20T15:00:00.000Z",
                         "feedbackLink": "https://ashby.com/feedback",
@@ -80,7 +85,7 @@ def create_ashby_webhook_payload(
                         "extraData": {},
                         "interviewers": [
                             {
-                                "id": "interviewer_test",
+                                "id": str(uuid4()),
                                 "firstName": "Test",
                                 "lastName": "User",
                                 "email": "test@example.com",
@@ -89,7 +94,7 @@ def create_ashby_webhook_payload(
                                 "isEnabled": True,
                                 "updatedAt": "2024-10-19T10:00:00.000Z",
                                 "interviewerPool": {
-                                    "id": "pool_test",
+                                    "id": str(uuid4()),
                                     "title": "Test Pool",
                                     "isArchived": False,
                                     "trainingPath": {},
@@ -116,7 +121,6 @@ async def create_test_rule(
 ) -> dict:
     """Insert an advancement rule into the database for testing."""
     import json
-    from uuid import UUID
 
     if interview_plan_id is None:
         interview_plan_id = str(uuid4())
@@ -194,7 +198,6 @@ async def create_test_schedule(
     status: str = "Complete",
 ) -> dict:
     """Insert a schedule into the database for testing."""
-    from uuid import UUID
 
     if schedule_id is None:
         schedule_id = str(uuid4())
@@ -245,7 +248,6 @@ async def create_test_feedback(
 ) -> dict:
     """Insert feedback submission into the database for testing."""
     import json
-    from uuid import UUID
 
     if submitted_values is None:
         submitted_values = {"overall_score": 4}
