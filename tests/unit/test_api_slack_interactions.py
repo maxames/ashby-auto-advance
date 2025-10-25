@@ -131,24 +131,19 @@ async def test_slack_interactions_block_actions_send_rejection_handled(monkeypat
 
     mock_request = create_mock_slack_request(payload)
 
-    with patch(
-        "app.api.slack_interactions.handle_rejection_button", new_callable=AsyncMock
-    ) as mock_handler:
-        # Mock asyncio.create_task to actually await the coroutine for testing
-        original_create_task = asyncio.create_task
+    # Mock asyncio.create_task to actually await the coroutine for testing
+    original_create_task = asyncio.create_task
 
-        async def mock_create_task(coro):
-            # Execute the coroutine immediately for testing
-            if asyncio.iscoroutine(coro):
-                await coro
-            return original_create_task(asyncio.sleep(0))  # Return a dummy task
+    async def mock_create_task(coro):
+        # Execute the coroutine immediately for testing
+        if asyncio.iscoroutine(coro):
+            await coro
+        return original_create_task(asyncio.sleep(0))  # Return a dummy task
 
-        with patch("asyncio.create_task", side_effect=mock_create_task):
-            response = await handle_slack_interactions(mock_request)
+    with patch("asyncio.create_task", side_effect=mock_create_task):
+        response = await handle_slack_interactions(mock_request)
 
-        assert response.status_code == 200
-        # Handler should be called (we can't easily assert this with create_task,
-        # but the mock_create_task ensures it was awaited)
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -202,11 +197,17 @@ async def test_handle_rejection_button_success_updates_message():
     action = {"value": json.dumps({"application_id": application_id})}
 
     # Mock execute_rejection to return success
+    mock_success_blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": "Success"}}]
+
     with (
         patch("app.services.advancement.execute_rejection", new_callable=AsyncMock) as mock_execute,
         patch(
             "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
         ) as mock_chat_update,
+        patch(
+            "app.api.slack_interactions.build_rejection_success_message",
+            return_value=mock_success_blocks,
+        ) as mock_success_view,
     ):
         mock_execute.return_value = {"success": True}
 
@@ -215,13 +216,16 @@ async def test_handle_rejection_button_success_updates_message():
         # Verify execute_rejection was called
         mock_execute.assert_called_once_with(application_id)
 
+        # Verify view builder was called
+        mock_success_view.assert_called_once()
+
         # Verify Slack message was updated with success
         mock_chat_update.assert_called_once()
         call_kwargs = mock_chat_update.call_args[1]
         assert call_kwargs["channel"] == "C123456"
         assert call_kwargs["ts"] == "1234567890.123456"
         assert "✅" in call_kwargs["text"]
-        assert "Rejection Email Sent" in call_kwargs["blocks"][0]["text"]["text"]
+        assert call_kwargs["blocks"] == mock_success_blocks
 
 
 @pytest.mark.asyncio
@@ -238,11 +242,17 @@ async def test_handle_rejection_button_failure_updates_message_with_error():
     action = {"value": json.dumps({"application_id": application_id})}
 
     # Mock execute_rejection to return failure
+    mock_error_blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": "Error"}}]
+
     with (
         patch("app.services.advancement.execute_rejection", new_callable=AsyncMock) as mock_execute,
         patch(
             "app.clients.slack.slack_client.chat_update", new_callable=AsyncMock
         ) as mock_chat_update,
+        patch(
+            "app.api.slack_interactions.build_rejection_error_message",
+            return_value=mock_error_blocks,
+        ) as mock_error_view,
     ):
         mock_execute.return_value = {"success": False, "error": "Candidate not found"}
 
@@ -251,11 +261,13 @@ async def test_handle_rejection_button_failure_updates_message_with_error():
         # Verify execute_rejection was called
         mock_execute.assert_called_once_with(application_id)
 
+        # Verify view builder was called with error message
+        mock_error_view.assert_called_once_with("Candidate not found")
+
         # Verify Slack message was updated with error
         mock_chat_update.assert_called_once()
         call_kwargs = mock_chat_update.call_args[1]
         assert call_kwargs["channel"] == "C123456"
         assert call_kwargs["ts"] == "1234567890.123456"
         assert "❌" in call_kwargs["text"]
-        assert "Failed to Send Rejection" in call_kwargs["blocks"][0]["text"]["text"]
-        assert "Candidate not found" in call_kwargs["blocks"][0]["text"]["text"]
+        assert call_kwargs["blocks"] == mock_error_blocks

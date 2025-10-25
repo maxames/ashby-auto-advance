@@ -59,7 +59,7 @@ Responsibilities:
 Files:
 - `ashby.py` - Ashby ATS API client (fetch candidate info, poll feedback, advance stages, archive candidates)
 - `slack.py` - Slack SDK wrapper (send messages, update messages)
-- `slack_views.py` - Slack UI formatters (rejection notifications only)
+- `slack_views.py` - Slack UI formatters (rejection notifications and button response messages)
 
 What it does NOT do:
 - Business logic
@@ -79,6 +79,7 @@ Responsibilities:
 
 Files:
 - `interviews.py` - Interview schedule processing (webhook business logic, fetches job_id and interview_plan_id)
+- `webhooks.py` - Webhook audit logging
 - `rules.py` - Rule matching and evaluation engine (finds rules, evaluates requirements, determines target stage)
 - `feedback_sync.py` - Polls Ashby API for feedback submissions every 30 minutes
 - `advancement.py` - Orchestrates evaluation, advancement execution, and rejection notifications

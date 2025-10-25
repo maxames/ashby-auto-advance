@@ -11,6 +11,10 @@ from fastapi.datastructures import UploadFile
 from structlog import get_logger
 
 from app.clients.slack import slack_client
+from app.clients.slack_views import (
+    build_rejection_error_message,
+    build_rejection_success_message,
+)
 from app.core.config import settings
 from app.utils.security import verify_slack_signature
 
@@ -93,19 +97,7 @@ async def handle_rejection_button(payload: dict[str, Any], action: dict[str, Any
                 channel=channel_id,
                 ts=message_ts,
                 text="✅ Rejection sent successfully",
-                blocks=[
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": (
-                                "✅ *Rejection Email Sent*\n\n"
-                                "The candidate has been archived and "
-                                "a rejection email was sent."
-                            ),
-                        },
-                    }
-                ],
+                blocks=build_rejection_success_message(),
             )
 
             logger.info(
@@ -115,22 +107,12 @@ async def handle_rejection_button(payload: dict[str, Any], action: dict[str, Any
             )
         else:
             # Update message with error
+            error_message = result.get("error", "Unknown error")
             await slack_client.chat_update(
                 channel=channel_id,
                 ts=message_ts,
                 text="❌ Failed to send rejection",
-                blocks=[
-                    {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": (
-                                f"❌ *Failed to Send Rejection*\n\n"
-                                f"{result.get('error', 'Unknown error')}"
-                            ),
-                        },
-                    }
-                ],
+                blocks=build_rejection_error_message(error_message),
             )
 
             logger.error(

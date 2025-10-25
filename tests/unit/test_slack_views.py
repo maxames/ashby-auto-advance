@@ -2,7 +2,11 @@
 
 import json
 
-from app.clients.slack_views import build_rejection_notification
+from app.clients.slack_views import (
+    build_rejection_error_message,
+    build_rejection_notification,
+    build_rejection_success_message,
+)
 
 
 class TestBuildRejectionNotification:
@@ -175,3 +179,71 @@ class TestBuildRejectionNotification:
         # Check feedback is mentioned
         assert "Technical Screen" in text_content or "2" in text_content
         assert "System Design" in text_content or "1" in text_content
+
+
+class TestBuildRejectionSuccessMessage:
+    """Tests for build_rejection_success_message function."""
+
+    def test_returns_valid_block_structure(self):
+        """Test returns valid Slack Block Kit structure."""
+        blocks = build_rejection_success_message()
+
+        assert isinstance(blocks, list)
+        assert len(blocks) == 1
+        assert blocks[0]["type"] == "section"
+
+    def test_includes_success_indicator(self):
+        """Test includes success emoji and message."""
+        blocks = build_rejection_success_message()
+
+        text_content = json.dumps(blocks)
+        # Check for unicode escape sequence or emoji
+        assert "✅" in text_content or "\\u2705" in text_content
+        assert "Rejection Email Sent" in text_content
+
+    def test_includes_confirmation_message(self):
+        """Test includes confirmation that candidate was archived."""
+        blocks = build_rejection_success_message()
+
+        text_content = json.dumps(blocks)
+        assert "archived" in text_content
+        assert "rejection email" in text_content
+
+
+class TestBuildRejectionErrorMessage:
+    """Tests for build_rejection_error_message function."""
+
+    def test_returns_valid_block_structure(self):
+        """Test returns valid Slack Block Kit structure."""
+        error_msg = "Candidate not found"
+        blocks = build_rejection_error_message(error_msg)
+
+        assert isinstance(blocks, list)
+        assert len(blocks) == 1
+        assert blocks[0]["type"] == "section"
+
+    def test_includes_error_indicator(self):
+        """Test includes error emoji and message."""
+        error_msg = "API error"
+        blocks = build_rejection_error_message(error_msg)
+
+        text_content = json.dumps(blocks)
+        # Check for unicode escape sequence or emoji
+        assert "❌" in text_content or "\\u274c" in text_content
+        assert "Failed to Send Rejection" in text_content
+
+    def test_includes_error_details(self):
+        """Test includes the specific error message provided."""
+        error_msg = "Candidate not found in system"
+        blocks = build_rejection_error_message(error_msg)
+
+        text_content = json.dumps(blocks)
+        assert error_msg in text_content
+
+    def test_handles_empty_error_message(self):
+        """Test gracefully handles empty error message."""
+        blocks = build_rejection_error_message("")
+
+        # Should not raise exception
+        assert isinstance(blocks, list)
+        assert len(blocks) == 1

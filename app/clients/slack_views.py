@@ -155,3 +155,46 @@ def build_rejection_notification(
     )
 
     return blocks
+
+
+def build_rejection_success_message() -> list[dict[str, Any]]:
+    """
+    Build Slack message blocks for successful rejection confirmation.
+
+    Returns:
+        List of Slack Block Kit blocks showing success state
+    """
+    return [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": (
+                    "✅ *Rejection Email Sent*\n\n"
+                    "The candidate has been archived and "
+                    "a rejection email was sent."
+                ),
+            },
+        }
+    ]
+
+
+def build_rejection_error_message(error: str) -> list[dict[str, Any]]:
+    """
+    Build Slack message blocks for rejection failure.
+
+    Args:
+        error: Error message to display
+
+    Returns:
+        List of Slack Block Kit blocks showing error state
+    """
+    return [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"❌ *Failed to Send Rejection*\n\n{error}",
+            },
+        }
+    ]

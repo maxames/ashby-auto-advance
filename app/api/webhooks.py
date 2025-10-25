@@ -9,9 +9,9 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from structlog import get_logger
 
 from app.core.config import settings
-from app.core.database import db
 from app.middleware.rate_limit import get_limiter
 from app.schemas.webhooks import AshbyWebhookPayload
+from app.services.webhooks import log_webhook_to_audit
 from app.utils.security import verify_ashby_signature
 
 logger = get_logger()
@@ -77,15 +77,7 @@ async def handle_ashby_webhook(request: Request) -> Response:
 
     # Log to audit table
     schedule_id = payload.data.get("interviewSchedule", {}).get("id")
-    await db.execute(
-        """
-        INSERT INTO ashby_webhook_payloads (schedule_id, received_at, action, payload)
-        VALUES ($1, NOW(), $2, $3)
-    """,
-        schedule_id,
-        payload.action,
-        json.dumps(payload_dict),
-    )
+    await log_webhook_to_audit(schedule_id, payload.action, payload_dict)
 
     # Process based on action
     if payload.action == "interviewScheduleUpdate":
