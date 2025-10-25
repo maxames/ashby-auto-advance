@@ -48,13 +48,26 @@ Check application health and database connectivity.
 {
   "status": "healthy",
   "database": "connected",
+  "scheduler": "running",
   "pool": {
     "size": 10,
     "free": 8,
     "in_use": 2
+  },
+  "metadata": {
+    "jobs": 4,
+    "plans": 3,
+    "stages": 12,
+    "last_synced": "2024-10-25T18:30:00Z"
   }
 }
 ```
+
+**Response Fields:**
+- `metadata.jobs` - Number of jobs cached
+- `metadata.plans` - Number of interview plans cached
+- `metadata.stages` - Number of interview stages cached
+- `metadata.last_synced` - ISO timestamp of last metadata sync (null if never synced)
 
 **503 Service Unavailable** - Database unavailable
 
@@ -293,6 +306,48 @@ Useful after new employees join or email addresses change.
 {
   "status": "completed",
   "message": "Slack users synced"
+}
+```
+
+---
+
+### Sync Interviews
+
+**`POST /admin/sync-interviews`**
+
+Manually trigger interview definitions synchronization from Ashby.
+
+Useful after creating or updating interviews in Ashby.
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "status": "completed",
+  "message": "Interviews synced"
+}
+```
+
+---
+
+### Sync Metadata
+
+**`POST /admin/sync-metadata`**
+
+Manually trigger metadata synchronization (jobs, plans, stages) from Ashby.
+
+Syncs all metadata needed for UI dropdowns. Useful for immediate refresh during development.
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "status": "completed",
+  "message": "Metadata synced (jobs, plans, stages)"
 }
 ```
 
@@ -584,6 +639,54 @@ Get list of interviews, optionally filtered by job.
   ]
 }
 ```
+
+---
+
+### Get Feedback Form Fields
+
+**`GET /admin/metadata/feedback-forms/{form_id}/fields`**
+
+Get scoreable fields from a feedback form for use in advancement rule requirements.
+
+Returns only field types that can be scored (Score, ValueSelect, Rating). Excludes text fields like RichText.
+
+#### Path Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `form_id` | Yes | Feedback form definition UUID |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "fields": [
+    {
+      "path": "overall_score",
+      "label": "Overall Assessment",
+      "type": "Score",
+      "options": null
+    },
+    {
+      "path": "recommendation",
+      "label": "Hiring Recommendation",
+      "type": "ValueSelect",
+      "options": [
+        {"label": "Strong Hire", "value": "strong_hire"},
+        {"label": "Hire", "value": "hire"},
+        {"label": "No Hire", "value": "no_hire"}
+      ]
+    }
+  ]
+}
+```
+
+**Field Types:**
+- `Score` - Numeric rating field
+- `ValueSelect` - Dropdown with predefined options
+- `Rating` - Star rating or similar
 
 ---
 
