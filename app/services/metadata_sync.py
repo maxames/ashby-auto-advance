@@ -8,11 +8,13 @@ from structlog import get_logger
 
 from app.clients.ashby import ashby_client, list_interview_stages_for_plan
 from app.core.database import db
+from app.core.errors import service_boundary
 from app.utils.time import parse_ashby_timestamp
 
 logger = get_logger()
 
 
+@service_boundary
 async def sync_jobs() -> None:
     """
     Sync all jobs from Ashby (open and closed).
@@ -117,6 +119,7 @@ async def sync_jobs() -> None:
         logger.exception("sync_jobs_error")
 
 
+@service_boundary
 async def sync_interview_plans() -> None:
     """
     Sync all interview plans from Ashby.
@@ -171,6 +174,7 @@ async def sync_interview_plans() -> None:
         logger.exception("sync_interview_plans_error")
 
 
+@service_boundary
 async def sync_interview_stages() -> None:
     """
     Sync all interview stages for all active interview plans.

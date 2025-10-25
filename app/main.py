@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 
 from app.api.admin import router as admin_router
+from app.api.errors import setup_exception_handlers
 from app.api.slack_interactions import router as slack_router
 from app.api.webhooks import router as webhook_router
 from app.core.database import db
@@ -15,7 +16,6 @@ from app.middleware import (
     LoggingMiddleware,
     RequestIDMiddleware,
     setup_cors,
-    setup_exception_handlers,
     setup_rate_limiting,
 )
 from app.services.metadata_sync import (

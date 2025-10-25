@@ -9,6 +9,7 @@ import aiohttp
 from structlog import get_logger
 
 from app.core.config import settings
+from app.core.errors import ExternalServiceError
 from app.types.ashby import (
     ApplicationChangeStageResponseTD,
     CandidateTD,
@@ -79,7 +80,11 @@ class AshbyClient:
 
                     # Raise exception to stop execution
                     error_display = error_msg if isinstance(error_msg, str) else str(error_msg)
-                    raise Exception(f"Ashby API request failed ({endpoint}): {error_display}")
+                    raise ExternalServiceError(
+                        f"Ashby API request failed: {error_display}",
+                        service="ashby",
+                        context={"endpoint": endpoint, "response": result},
+                    )
 
                 return result
 
@@ -104,7 +109,11 @@ async def fetch_candidate_info(candidate_id: str) -> CandidateTD:
     response = await ashby_client.post("candidate.info", {"id": candidate_id})
 
     if not response["success"]:
-        raise Exception(f"Ashby API request failed (candidate.info): {response.get('error')}")
+        raise ExternalServiceError(
+            f"Ashby API request failed: {response.get('error')}",
+            service="ashby",
+            context={"endpoint": "candidate.info", "candidate_id": candidate_id},
+        )
 
     data = response["results"]
 
@@ -131,7 +140,11 @@ async def fetch_job_info(job_id: str) -> JobInfoTD:
     response = await ashby_client.post("job.info", {"id": job_id})
 
     if not response["success"]:
-        raise Exception(f"Ashby API request failed (job.info): {response.get('error')}")
+        raise ExternalServiceError(
+            f"Ashby API request failed: {response.get('error')}",
+            service="ashby",
+            context={"endpoint": "job.info", "job_id": job_id},
+        )
 
     data = response["results"]
 
@@ -193,8 +206,13 @@ async def fetch_application_feedback(application_id: str) -> list[FeedbackSubmis
         response = await ashby_client.post("applicationFeedback.list", request_data)
 
         if not response["success"]:
-            raise Exception(
-                f"Ashby API request failed (applicationFeedback.list): {response.get('error')}"
+            raise ExternalServiceError(
+                f"Ashby API request failed: {response.get('error')}",
+                service="ashby",
+                context={
+                    "endpoint": "applicationFeedback.list",
+                    "application_id": application_id,
+                },
             )
 
         results = response.get("results", [])
@@ -231,7 +249,11 @@ async def fetch_interview_stage_info(stage_id: str) -> InterviewStageTD:
     response = await ashby_client.post("interviewStage.info", {"interviewStageId": stage_id})
 
     if not response["success"]:
-        raise Exception(f"Ashby API request failed (interviewStage.info): {response.get('error')}")
+        raise ExternalServiceError(
+            f"Ashby API request failed: {response.get('error')}",
+            service="ashby",
+            context={"endpoint": "interviewStage.info", "stage_id": stage_id},
+        )
 
     return cast(InterviewStageTD, response["results"])
 
@@ -259,7 +281,14 @@ async def list_interview_stages_for_plan(
     )
 
     if not response["success"]:
-        raise Exception(f"Ashby API request failed (interviewStage.list): {response.get('error')}")
+        raise ExternalServiceError(
+            f"Ashby API request failed: {response.get('error')}",
+            service="ashby",
+            context={
+                "endpoint": "interviewStage.list",
+                "interview_plan_id": interview_plan_id,
+            },
+        )
 
     stages = cast(list[InterviewStageTD], response.get("results", []))
 
@@ -300,8 +329,14 @@ async def advance_candidate_stage(
     )
 
     if not response["success"]:
-        raise Exception(
-            f"Ashby API request failed (application.changeStage): {response.get('error')}"
+        raise ExternalServiceError(
+            f"Ashby API request failed: {response.get('error')}",
+            service="ashby",
+            context={
+                "endpoint": "application.changeStage",
+                "application_id": application_id,
+                "target_stage_id": target_stage_id,
+            },
         )
 
     logger.info(
@@ -345,8 +380,14 @@ async def archive_candidate(
     response = await ashby_client.post("application.changeStage", request_data)
 
     if not response["success"]:
-        raise Exception(
-            f"Ashby API request failed (application.changeStage/archive): {response.get('error')}"
+        raise ExternalServiceError(
+            f"Ashby API request failed: {response.get('error')}",
+            service="ashby",
+            context={
+                "endpoint": "application.changeStage/archive",
+                "application_id": application_id,
+                "archive_reason_id": archive_reason_id,
+            },
         )
 
     logger.info(

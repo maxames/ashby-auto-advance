@@ -9,6 +9,7 @@ from structlog import get_logger
 
 from app.clients.ashby import list_interview_stages_for_plan
 from app.core.database import db
+from app.core.errors import NotFoundError
 
 logger = get_logger()
 
@@ -408,7 +409,10 @@ async def get_target_stage_for_rule(
     )
 
     if not row:
-        raise ValueError(f"Rule not found: {rule_id}")
+        raise NotFoundError(
+            f"Rule not found: {rule_id}",
+            context={"rule_id": rule_id},
+        )
 
     target_stage_id = row["target_stage_id"]
 
@@ -427,7 +431,13 @@ async def get_target_stage_for_rule(
             break
 
     if not current_stage:
-        raise ValueError(f"Current stage not found in plan: {current_stage_id}")
+        raise NotFoundError(
+            f"Current stage not found in plan: {current_stage_id}",
+            context={
+                "current_stage_id": current_stage_id,
+                "interview_plan_id": interview_plan_id,
+            },
+        )
 
     # Find next stage
     current_order = current_stage["orderInInterviewPlan"]
@@ -440,8 +450,14 @@ async def get_target_stage_for_rule(
             break
 
     if not next_stage:
-        raise ValueError(
-            f"No next stage found (current order: {current_order}, plan: {interview_plan_id})"
+        raise NotFoundError(
+            f"No next stage found (current order: {current_order}, plan: {interview_plan_id})",
+            context={
+                "current_order": current_order,
+                "next_order": next_order,
+                "interview_plan_id": interview_plan_id,
+                "current_stage_id": current_stage_id,
+            },
         )
 
     logger.info(

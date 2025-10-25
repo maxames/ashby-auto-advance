@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     admin_slack_channel_id: str | None = None
     default_archive_reason_id: str  # Required, not optional
 
+    # Error handling
+    expose_error_details: bool = True  # Set false in production
+
     @property
     def frontend_urls(self) -> list[str]:
         """Parse frontend URLs from comma-separated env var."""

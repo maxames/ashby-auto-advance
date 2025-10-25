@@ -11,6 +11,7 @@ from structlog import get_logger
 from app.clients.ashby import ashby_client
 from app.clients.slack import slack_client
 from app.core.database import db
+from app.core.errors import service_boundary
 from app.types.ashby import FeedbackFormTD, JobInfoTD
 from app.utils.time import is_stale
 
@@ -64,6 +65,7 @@ async def _upsert_interview(
         await db.execute(query, *args)
 
 
+@service_boundary
 async def sync_feedback_forms() -> None:
     """
     Sync all feedback form definitions from Ashby.
@@ -116,6 +118,7 @@ async def sync_feedback_forms() -> None:
         logger.exception("sync_feedback_forms_error")
 
 
+@service_boundary
 async def sync_interviews() -> None:
     """
     Sync all interview definitions from Ashby.
@@ -247,6 +250,7 @@ async def sync_job_info(job_id: str) -> JobInfoTD | None:
     return None
 
 
+@service_boundary
 async def sync_slack_users() -> None:
     """
     Sync all Slack users to enable email → slack_user_id mapping.

@@ -9,11 +9,13 @@ from typing import Any
 from structlog import get_logger
 
 from app.core.database import db
+from app.core.errors import service_boundary
 from app.services.sync import _upsert_interview
 
 logger = get_logger()
 
 
+@service_boundary
 async def process_schedule_update(schedule: dict[str, Any]) -> None:
     """
     Process interview schedule update from webhook.
@@ -302,6 +304,7 @@ async def insert_event_with_assignments(conn: Any, event: dict[str, Any], schedu
         )
 
 
+@service_boundary
 async def refetch_missing_advancement_fields() -> None:
     """
     Background job to refetch interview_plan_id for schedules missing it.

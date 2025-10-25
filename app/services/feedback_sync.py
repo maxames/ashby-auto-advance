@@ -8,6 +8,7 @@ from structlog import get_logger
 
 from app.clients.ashby import fetch_application_feedback
 from app.core.database import db
+from app.core.errors import service_boundary
 
 logger = get_logger()
 
@@ -130,6 +131,7 @@ async def sync_feedback_for_application(application_id: str) -> int:
         raise
 
 
+@service_boundary
 async def sync_feedback_for_active_schedules() -> None:
     """
     Sync feedback for all active schedules.

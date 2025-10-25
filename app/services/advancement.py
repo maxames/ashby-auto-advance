@@ -16,6 +16,7 @@ from app.clients.ashby import (
 from app.clients.slack import slack_client
 from app.core.config import settings
 from app.core.database import db
+from app.core.errors import ConfigurationError, service_boundary
 from app.services.rules import (
     evaluate_rule_requirements,
     find_matching_rule,
@@ -395,6 +396,7 @@ async def execute_advancement(
     return {"success": False, "status": "unknown_error"}
 
 
+@service_boundary
 async def process_advancement_evaluations() -> None:
     """
     Main function called by scheduler to process advancement evaluations.
@@ -693,6 +695,7 @@ async def handle_advancement_error(schedule_id: str, application_id: str, error:
         # Don't raise - error notification failure shouldn't cause more issues
 
 
+@service_boundary
 async def execute_rejection(application_id: str) -> dict[str, Any]:
     """
     Execute rejection (archive candidate) via Ashby API.
@@ -710,7 +713,10 @@ async def execute_rejection(application_id: str) -> dict[str, Any]:
         archive_reason_id = settings.default_archive_reason_id
 
         if not archive_reason_id:
-            raise ValueError("DEFAULT_ARCHIVE_REASON_ID must be configured to execute rejections")
+            raise ConfigurationError(
+                "DEFAULT_ARCHIVE_REASON_ID must be configured to execute rejections",
+                context={"required_env_var": "DEFAULT_ARCHIVE_REASON_ID"},
+            )
 
         await archive_candidate(
             application_id=application_id,

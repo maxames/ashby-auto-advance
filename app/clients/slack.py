@@ -8,6 +8,7 @@ from slack_sdk.web.async_client import AsyncSlackResponse, AsyncWebClient
 from structlog import get_logger
 
 from app.core.config import settings
+from app.core.errors import ExternalServiceError
 
 logger = get_logger()
 
@@ -41,7 +42,11 @@ class SlackClient:
             return response
         except Exception as e:
             logger.error("slack_dm_failed", user_id=user_id, error=str(e))
-            raise
+            raise ExternalServiceError(
+                f"Slack API call failed: {str(e)}",
+                service="slack",
+                context={"method": "send_dm", "user_id": user_id},
+            ) from e
 
     async def open_modal(self, trigger_id: str, view: dict[str, Any]) -> AsyncSlackResponse:
         """
@@ -103,7 +108,11 @@ class SlackClient:
             return response
         except Exception as e:
             logger.error("slack_message_failed", channel=channel, error=str(e))
-            raise
+            raise ExternalServiceError(
+                f"Slack API call failed: {str(e)}",
+                service="slack",
+                context={"method": "chat_postMessage", "channel": channel},
+            ) from e
 
     async def chat_update(
         self,
@@ -135,7 +144,11 @@ class SlackClient:
             return response
         except Exception as e:
             logger.error("slack_update_failed", channel=channel, ts=ts, error=str(e))
-            raise
+            raise ExternalServiceError(
+                f"Slack API call failed: {str(e)}",
+                service="slack",
+                context={"method": "chat_update", "channel": channel, "ts": ts},
+            ) from e
 
 
 # Module singleton
