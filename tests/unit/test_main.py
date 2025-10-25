@@ -96,6 +96,15 @@ async def test_lifespan_startup_sequence():
     async def track_sync_interviews(*args, **kwargs):
         call_order.append("sync_interviews")
 
+    async def track_sync_jobs(*args, **kwargs):
+        call_order.append("sync_jobs")
+
+    async def track_sync_plans(*args, **kwargs):
+        call_order.append("sync_plans")
+
+    async def track_sync_stages(*args, **kwargs):
+        call_order.append("sync_stages")
+
     async def track_sync_users(*args, **kwargs):
         call_order.append("sync_users")
 
@@ -124,6 +133,21 @@ async def test_lifespan_startup_sequence():
             side_effect=track_sync_interviews,
         ),
         patch(
+            "app.main.sync_jobs",
+            new_callable=AsyncMock,
+            side_effect=track_sync_jobs,
+        ),
+        patch(
+            "app.main.sync_interview_plans",
+            new_callable=AsyncMock,
+            side_effect=track_sync_plans,
+        ),
+        patch(
+            "app.main.sync_interview_stages",
+            new_callable=AsyncMock,
+            side_effect=track_sync_stages,
+        ),
+        patch(
             "app.main.sync_slack_users",
             new_callable=AsyncMock,
             side_effect=track_sync_users,
@@ -146,6 +170,9 @@ async def test_lifespan_startup_sequence():
             "connect",
             "sync_forms",
             "sync_interviews",
+            "sync_jobs",
+            "sync_plans",
+            "sync_stages",
             "sync_users",
             "setup_scheduler",
             "start_scheduler",

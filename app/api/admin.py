@@ -119,9 +119,7 @@ async def create_advancement_rule(rule: AdvancementRuleCreate) -> RuleCreateResp
     Returns:
         Created rule with IDs
     """
-    logger.info(
-        "admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id
-    )
+    logger.info("admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id)
 
     # Convert Pydantic models to dicts for service layer
     requirements = [req.model_dump() for req in rule.requirements]
@@ -196,9 +194,7 @@ async def delete_advancement_rule(rule_id: str) -> RuleDeleteResponse:
     success = await admin_service.delete_advancement_rule(rule_id)
 
     if not success:
-        raise HTTPException(
-            status_code=404, detail=f"Rule {rule_id} not found or already deleted"
-        )
+        raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found or already deleted")
 
     return RuleDeleteResponse(status="deleted", rule_id=rule_id)
 

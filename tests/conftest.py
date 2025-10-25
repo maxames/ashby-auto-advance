@@ -62,6 +62,10 @@ async def clean_db(db_pool):
         await conn.execute("DELETE FROM interviews")
         await conn.execute("DELETE FROM slack_users")
         await conn.execute("DELETE FROM ashby_webhook_payloads")
+        await conn.execute("DELETE FROM interview_stages")
+        await conn.execute("DELETE FROM job_interview_plans")
+        await conn.execute("DELETE FROM interview_plans")
+        await conn.execute("DELETE FROM jobs")
 
     yield db_pool
 

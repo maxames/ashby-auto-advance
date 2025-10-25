@@ -293,3 +293,88 @@ async def create_test_feedback(
         "interview_id": interview_id,
         "submitted_values": submitted_values,
     }
+
+
+async def create_test_job(
+    db_pool,
+    job_id: str | None = None,
+    title: str = "Test Job",
+    status: str = "Open",
+) -> dict:
+    """Insert job into the database for testing."""
+    if job_id is None:
+        job_id = str(uuid4())
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO jobs (job_id, title, status, synced_at)
+            VALUES ($1, $2, $3, NOW())
+            """,
+            job_id,
+            title,
+            status,
+        )
+
+    return {"job_id": job_id, "title": title, "status": status}
+
+
+async def create_test_interview_plan(
+    db_pool,
+    plan_id: str | None = None,
+    title: str = "Test Plan",
+    is_archived: bool = False,
+) -> dict:
+    """Insert interview plan into the database for testing."""
+    if plan_id is None:
+        plan_id = str(uuid4())
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO interview_plans (interview_plan_id, title, is_archived, synced_at)
+            VALUES ($1, $2, $3, NOW())
+            """,
+            plan_id,
+            title,
+            is_archived,
+        )
+
+    return {"interview_plan_id": plan_id, "title": title, "is_archived": is_archived}
+
+
+async def create_test_stage(
+    db_pool,
+    stage_id: str | None = None,
+    plan_id: str | None = None,
+    title: str = "Test Stage",
+    order: int = 1,
+    stage_type: str = "Active",
+) -> dict:
+    """Insert interview stage into the database for testing."""
+    if stage_id is None:
+        stage_id = str(uuid4())
+    if plan_id is None:
+        plan_id = str(uuid4())
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO interview_stages
+            (interview_stage_id, interview_plan_id, title, type, order_in_plan, synced_at)
+            VALUES ($1, $2, $3, $4, $5, NOW())
+            """,
+            stage_id,
+            plan_id,
+            title,
+            stage_type,
+            order,
+        )
+
+    return {
+        "interview_stage_id": stage_id,
+        "interview_plan_id": plan_id,
+        "title": title,
+        "type": stage_type,
+        "order": order,
+    }

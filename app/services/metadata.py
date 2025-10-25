@@ -38,9 +38,7 @@ async def get_jobs(active_only: bool = True) -> list[dict[str, Any]]:
             "id": str(job["job_id"]),
             "title": job["title"],
             "status": job["status"],
-            "department_id": (
-                str(job["department_id"]) if job["department_id"] else None
-            ),
+            "department_id": (str(job["department_id"]) if job["department_id"] else None),
             "location": job["location_name"],
             "employment_type": job["employment_type"],
         }

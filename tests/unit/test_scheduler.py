@@ -10,12 +10,12 @@ from app.services.scheduler import setup_scheduler, shutdown_scheduler, start_sc
 
 
 def test_setup_scheduler_adds_all_jobs():
-    """Setup adds all 6 background jobs."""
+    """Setup adds all 9 background jobs."""
     with patch("app.services.scheduler.scheduler.add_job") as mock_add_job:
         setup_scheduler()
 
-        # Verify 6 jobs added
-        assert mock_add_job.call_count == 6
+        # Verify 9 jobs added
+        assert mock_add_job.call_count == 9
 
 
 def test_setup_scheduler_sync_feedback_job_config():
@@ -141,6 +141,69 @@ def test_setup_scheduler_sync_slack_users_job_config():
         kwargs = sync_users_call[1]
         assert kwargs["trigger"] == "interval"
         assert kwargs["hours"] == 12
+        assert kwargs["coalesce"] is True
+        assert kwargs["max_instances"] == 1
+
+
+def test_setup_scheduler_sync_jobs_job_config():
+    """Sync jobs job configured correctly."""
+    with patch("app.services.scheduler.scheduler.add_job") as mock_add_job:
+        setup_scheduler()
+
+        # Find the sync_jobs call
+        calls = mock_add_job.call_args_list
+        sync_jobs_call = None
+        for call in calls:
+            if call[1].get("id") == "sync_jobs":
+                sync_jobs_call = call
+                break
+
+        assert sync_jobs_call is not None
+        kwargs = sync_jobs_call[1]
+        assert kwargs["trigger"] == "interval"
+        assert kwargs["hours"] == 6
+        assert kwargs["coalesce"] is True
+        assert kwargs["max_instances"] == 1
+
+
+def test_setup_scheduler_sync_interview_plans_job_config():
+    """Sync interview plans job configured correctly."""
+    with patch("app.services.scheduler.scheduler.add_job") as mock_add_job:
+        setup_scheduler()
+
+        # Find the sync_interview_plans call
+        calls = mock_add_job.call_args_list
+        sync_plans_call = None
+        for call in calls:
+            if call[1].get("id") == "sync_interview_plans":
+                sync_plans_call = call
+                break
+
+        assert sync_plans_call is not None
+        kwargs = sync_plans_call[1]
+        assert kwargs["trigger"] == "interval"
+        assert kwargs["hours"] == 6
+        assert kwargs["coalesce"] is True
+        assert kwargs["max_instances"] == 1
+
+
+def test_setup_scheduler_sync_interview_stages_job_config():
+    """Sync interview stages job configured correctly."""
+    with patch("app.services.scheduler.scheduler.add_job") as mock_add_job:
+        setup_scheduler()
+
+        # Find the sync_interview_stages call
+        calls = mock_add_job.call_args_list
+        sync_stages_call = None
+        for call in calls:
+            if call[1].get("id") == "sync_interview_stages":
+                sync_stages_call = call
+                break
+
+        assert sync_stages_call is not None
+        kwargs = sync_stages_call[1]
+        assert kwargs["trigger"] == "interval"
+        assert kwargs["hours"] == 6
         assert kwargs["coalesce"] is True
         assert kwargs["max_instances"] == 1
 

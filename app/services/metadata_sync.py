@@ -8,6 +8,7 @@ from structlog import get_logger
 
 from app.clients.ashby import ashby_client, list_interview_stages_for_plan
 from app.core.database import db
+from app.utils.time import parse_ashby_timestamp
 
 logger = get_logger()
 
@@ -66,8 +67,8 @@ async def sync_jobs() -> None:
                         else None
                     ),
                     job_dict.get("employmentType"),
-                    job_dict.get("createdAt"),
-                    job_dict.get("updatedAt"),
+                    parse_ashby_timestamp(job_dict.get("createdAt")),
+                    parse_ashby_timestamp(job_dict.get("updatedAt")),
                 )
 
                 # Sync interview plan associations
@@ -154,8 +155,8 @@ async def sync_interview_plans() -> None:
                     plan_dict["id"],
                     plan_dict.get("title"),
                     plan_dict.get("isArchived", False),
-                    plan_dict.get("createdAt"),
-                    plan_dict.get("updatedAt"),
+                    parse_ashby_timestamp(plan_dict.get("createdAt")),
+                    parse_ashby_timestamp(plan_dict.get("updatedAt")),
                 )
                 plans_synced += 1
 
