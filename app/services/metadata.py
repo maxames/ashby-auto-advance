@@ -154,3 +154,57 @@ async def get_interviews(job_id: str | None = None) -> list[dict[str, Any]]:
         }
         for interview in interviews
     ]
+
+
+async def get_feedback_form_fields(form_id: str) -> list[dict[str, Any]]:
+    """
+    Get scoreable fields from a feedback form.
+
+    Parses form definition JSON to extract fields that can be used
+    in advancement rule requirements (Score, ValueSelect, Rating types).
+
+    Args:
+        form_id: Feedback form definition UUID
+
+    Returns:
+        List of field dicts with path, label, type, and options
+    """
+    import json
+    from uuid import UUID
+
+    form = await db.fetchrow(
+        """
+        SELECT definition
+        FROM feedback_form_definitions
+        WHERE form_definition_id = $1
+        """,
+        UUID(form_id),
+    )
+
+    if not form:
+        return []
+
+    # Parse form definition JSON (stored as text)
+    form_def = json.loads(form["definition"])
+
+    fields = []
+    for section in form_def.get("sections", []):
+        for field_wrapper in section.get("fields", []):
+            field = field_wrapper.get("field", {})
+            field_type = field.get("type")
+
+            # Only include scoreable field types (not RichText, etc.)
+            if field_type in ["Score", "ValueSelect", "Rating"]:
+                fields.append(
+                    {
+                        "path": field.get("path"),
+                        "label": field.get("title") or field.get("humanReadablePath"),
+                        "type": field_type,
+                        "options": (
+                            field.get("selectableValues") if field_type == "ValueSelect" else None
+                        ),
+                    }
+                )
+
+    logger.info("feedback_form_fields_retrieved", form_id=form_id, count=len(fields))
+    return fields

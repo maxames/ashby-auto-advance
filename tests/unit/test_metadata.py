@@ -324,3 +324,46 @@ async def test_get_interviews_excludes_archived(clean_db):
 
     assert len(interviews) == 1
     assert interviews[0]["title"] == "Active Interview"
+
+
+@pytest.mark.asyncio
+async def test_get_feedback_form_fields_returns_scoreable_fields(clean_db):
+    """Returns only scoreable field types."""
+    import json
+
+    form_id = str(uuid4())
+
+    form_def = {
+        "sections": [
+            {
+                "fields": [
+                    {
+                        "field": {
+                            "path": "overall_score",
+                            "type": "Score",
+                            "title": "Overall",
+                        }
+                    },
+                    {
+                        "field": {"path": "notes", "type": "RichText", "title": "Notes"}
+                    },  # Should be excluded
+                    {"field": {"path": "rating", "type": "Rating", "title": "Rating"}},
+                ]
+            }
+        ]
+    }
+
+    async with clean_db.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO feedback_form_definitions (form_definition_id, title, definition, updated_at) VALUES ($1, $2, $3, NOW())",
+            form_id,
+            "Test Form",
+            json.dumps(form_def),
+        )
+
+    fields = await metadata_service.get_feedback_form_fields(form_id)
+
+    assert len(fields) == 2  # Only Score and Rating, not RichText
+    assert any(f["path"] == "overall_score" for f in fields)
+    assert any(f["path"] == "rating" for f in fields)
+    assert not any(f["path"] == "notes" for f in fields)

@@ -11,6 +11,7 @@ from app.models.advancement import (
     AdvancementRuleCreate,
     AdvancementRuleResponse,
     AdvancementStatsResponse,
+    FeedbackFormFieldsResponse,
     InterviewsListResponse,
     JobsListResponse,
     PlansListResponse,
@@ -21,7 +22,7 @@ from app.models.advancement import (
 )
 from app.services import admin as admin_service
 from app.services import metadata as metadata_service
-from app.services.sync import sync_feedback_forms, sync_slack_users
+from app.services.sync import sync_feedback_forms, sync_interviews, sync_slack_users
 
 logger = get_logger()
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -49,6 +50,38 @@ async def admin_sync_slack_users() -> dict[str, str]:
     logger.info("admin_sync_slack_users_triggered")
     await sync_slack_users()
     return {"status": "completed", "message": "Slack users synced"}
+
+
+@router.post("/sync-interviews")
+async def admin_sync_interviews() -> dict[str, str]:
+    """
+    Manually trigger interview definitions sync from Ashby.
+
+    Useful for immediate refresh after interview changes.
+    """
+    logger.info("admin_sync_interviews_triggered")
+    await sync_interviews()
+    return {"status": "completed", "message": "Interviews synced"}
+
+
+@router.post("/sync-metadata")
+async def admin_sync_metadata() -> dict[str, str]:
+    """
+    Manually trigger metadata sync (jobs, plans, stages).
+
+    Useful for immediate refresh during development.
+    """
+    from app.services.metadata_sync import (
+        sync_interview_plans,
+        sync_interview_stages,
+        sync_jobs,
+    )
+
+    logger.info("admin_sync_metadata_triggered")
+    await sync_jobs()
+    await sync_interview_plans()
+    await sync_interview_stages()
+    return {"status": "completed", "message": "Metadata synced (jobs, plans, stages)"}
 
 
 @router.get("/stats", response_model=AdvancementStatsResponse)
@@ -262,3 +295,24 @@ async def list_interviews(job_id: str | None = None) -> InterviewsListResponse:
     """
     interviews = await metadata_service.get_interviews(job_id=job_id)
     return InterviewsListResponse(interviews=interviews)
+
+
+@router.get(
+    "/metadata/feedback-forms/{form_id}/fields",
+    response_model=FeedbackFormFieldsResponse,
+)
+async def get_feedback_form_fields(form_id: str) -> FeedbackFormFieldsResponse:
+    """
+    Get scoreable fields from a feedback form.
+
+    Returns only field types that can be used in advancement rules
+    (Score, ValueSelect, Rating). Excludes RichText and other non-scoreable types.
+
+    Args:
+        form_id: Feedback form definition UUID
+
+    Returns:
+        List of scoreable fields with paths, labels, types, and options
+    """
+    fields = await metadata_service.get_feedback_form_fields(form_id)
+    return FeedbackFormFieldsResponse(fields=fields)

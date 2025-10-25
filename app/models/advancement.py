@@ -106,6 +106,21 @@ class InterviewsListResponse(BaseModel):
     interviews: list[InterviewMetadata]
 
 
+class FeedbackFormField(BaseModel):
+    """Scoreable field in a feedback form."""
+
+    path: str
+    label: str | None
+    type: str
+    options: list[dict[str, str]] | None = None
+
+
+class FeedbackFormFieldsResponse(BaseModel):
+    """Response for feedback form fields."""
+
+    fields: list[FeedbackFormField]
+
+
 # ============================================
 # Response Models (Advancement Rules)
 # ============================================

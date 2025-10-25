@@ -14,15 +14,13 @@ from app.main import app
 @pytest_asyncio.fixture
 async def http_client(clean_db):
     """HTTP client for unit testing FastAPI app."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
 @pytest.mark.asyncio
 async def test_health_check_success(http_client, clean_db):
-    """Health check returns 200 with database and scheduler info."""
+    """Health check returns 200 with database, scheduler, and metadata info."""
     response = await http_client.get("/health")
 
     assert response.status_code == 200
@@ -33,6 +31,7 @@ async def test_health_check_success(http_client, clean_db):
     assert data["database"] == "connected"
     assert "scheduler" in data
     assert "pool" in data
+    assert "metadata" in data
 
     # Verify pool stats
     assert "size" in data["pool"]
@@ -41,6 +40,15 @@ async def test_health_check_success(http_client, clean_db):
     assert isinstance(data["pool"]["size"], int)
     assert isinstance(data["pool"]["free"], int)
     assert isinstance(data["pool"]["in_use"], int)
+
+    # Verify metadata stats
+    assert "jobs" in data["metadata"]
+    assert "plans" in data["metadata"]
+    assert "stages" in data["metadata"]
+    assert "last_synced" in data["metadata"]
+    assert isinstance(data["metadata"]["jobs"], int)
+    assert isinstance(data["metadata"]["plans"], int)
+    assert isinstance(data["metadata"]["stages"], int)
 
 
 @pytest.mark.asyncio
@@ -80,7 +88,6 @@ async def test_root_endpoint(http_client):
 @pytest.mark.asyncio
 async def test_lifespan_startup_sequence():
     """Lifespan startup executes in correct order."""
-    from contextlib import asynccontextmanager
 
     from app.main import lifespan
 

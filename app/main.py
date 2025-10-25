@@ -98,10 +98,10 @@ async def health_check() -> dict[str, Any]:
     """
     Health check endpoint.
 
-    Verifies database connectivity and reports pool stats.
+    Verifies database connectivity and reports pool stats plus metadata sync status.
 
     Returns:
-        dict: Health status with database and connection pool information
+        dict: Health status with database, scheduler, pool, and metadata information
 
     Raises:
         HTTPException: 503 if database is unavailable
@@ -116,6 +116,17 @@ async def health_check() -> dict[str, Any]:
         pool_size = db.pool.get_size()
         pool_free = db.pool.get_idle_size()
 
+        # Check metadata sync status
+        metadata_status = await db.fetchrow(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM jobs) as jobs_count,
+                (SELECT COUNT(*) FROM interview_plans) as plans_count,
+                (SELECT COUNT(*) FROM interview_stages) as stages_count,
+                (SELECT MAX(synced_at) FROM jobs) as last_sync
+            """
+        )
+
         return {
             "status": "healthy",
             "database": "connected",
@@ -124,6 +135,16 @@ async def health_check() -> dict[str, Any]:
                 "size": pool_size,
                 "free": pool_free,
                 "in_use": pool_size - pool_free,
+            },
+            "metadata": {
+                "jobs": metadata_status["jobs_count"] if metadata_status else 0,
+                "plans": metadata_status["plans_count"] if metadata_status else 0,
+                "stages": metadata_status["stages_count"] if metadata_status else 0,
+                "last_synced": (
+                    metadata_status["last_sync"].isoformat()
+                    if metadata_status and metadata_status["last_sync"]
+                    else None
+                ),
             },
         }
     except Exception as e:

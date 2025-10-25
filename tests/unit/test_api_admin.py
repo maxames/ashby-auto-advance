@@ -13,9 +13,7 @@ from app.api import admin as admin_api
 @pytest.mark.asyncio
 async def test_admin_sync_forms_triggers_sync():
     """/admin/sync-forms calls sync_feedback_forms."""
-    with patch(
-        "app.api.admin.sync_feedback_forms", new_callable=AsyncMock
-    ) as mock_sync:
+    with patch("app.api.admin.sync_feedback_forms", new_callable=AsyncMock) as mock_sync:
         response = await admin_api.admin_sync_forms()
 
         mock_sync.assert_called_once()
@@ -50,6 +48,36 @@ async def test_admin_sync_slack_users_returns_completed_status():
         response = await admin_api.admin_sync_slack_users()
 
         assert response == {"status": "completed", "message": "Slack users synced"}
+
+
+@pytest.mark.asyncio
+async def test_admin_sync_interviews_triggers_sync():
+    """/admin/sync-interviews calls sync_interviews."""
+    with patch("app.api.admin.sync_interviews", new_callable=AsyncMock) as mock_sync:
+        response = await admin_api.admin_sync_interviews()
+
+        mock_sync.assert_called_once()
+        assert response["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_admin_sync_metadata_triggers_sync():
+    """/admin/sync-metadata calls metadata sync functions."""
+    with (
+        patch("app.services.metadata_sync.sync_jobs", new_callable=AsyncMock) as mock_jobs,
+        patch(
+            "app.services.metadata_sync.sync_interview_plans", new_callable=AsyncMock
+        ) as mock_plans,
+        patch(
+            "app.services.metadata_sync.sync_interview_stages", new_callable=AsyncMock
+        ) as mock_stages,
+    ):
+        response = await admin_api.admin_sync_metadata()
+
+        mock_jobs.assert_called_once()
+        mock_plans.assert_called_once()
+        mock_stages.assert_called_once()
+        assert response["status"] == "completed"
 
 
 @pytest.mark.asyncio
@@ -208,9 +236,7 @@ async def test_admin_trigger_advancement_by_schedule_id():
     ) as mock_evaluate:
         mock_evaluate.return_value = mock_evaluation
 
-        response = await admin_api.trigger_advancement_evaluation(
-            schedule_id=schedule_id
-        )
+        response = await admin_api.trigger_advancement_evaluation(schedule_id=schedule_id)
 
         mock_evaluate.assert_called_once_with(schedule_id)
         assert response["schedule_id"] == schedule_id
@@ -276,9 +302,7 @@ async def test_list_jobs_endpoint_calls_service():
         }
     ]
 
-    with patch(
-        "app.api.admin.metadata_service.get_jobs", new_callable=AsyncMock
-    ) as mock_get:
+    with patch("app.api.admin.metadata_service.get_jobs", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = mock_jobs
 
         response = await admin_api.list_jobs(active_only=True)
@@ -292,9 +316,7 @@ async def test_list_jobs_endpoint_calls_service():
 async def test_get_job_plans_endpoint_calls_service():
     """/admin/metadata/jobs/{job_id}/plans calls metadata service."""
     job_id = str(uuid4())
-    mock_plans = [
-        {"id": str(uuid4()), "title": "Engineering Onsite", "is_default": True}
-    ]
+    mock_plans = [{"id": str(uuid4()), "title": "Engineering Onsite", "is_default": True}]
 
     with patch(
         "app.api.admin.metadata_service.get_plans_for_job", new_callable=AsyncMock
@@ -312,9 +334,7 @@ async def test_get_job_plans_endpoint_calls_service():
 async def test_get_plan_stages_endpoint_calls_service():
     """/admin/metadata/plans/{plan_id}/stages calls metadata service."""
     plan_id = str(uuid4())
-    mock_stages = [
-        {"id": str(uuid4()), "title": "Technical Screen", "type": "Active", "order": 1}
-    ]
+    mock_stages = [{"id": str(uuid4()), "title": "Technical Screen", "type": "Active", "order": 1}]
 
     with patch(
         "app.api.admin.metadata_service.get_stages_for_plan", new_callable=AsyncMock
@@ -341,9 +361,7 @@ async def test_list_interviews_endpoint_calls_service():
         }
     ]
 
-    with patch(
-        "app.api.admin.metadata_service.get_interviews", new_callable=AsyncMock
-    ) as mock_get:
+    with patch("app.api.admin.metadata_service.get_interviews", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = mock_interviews
 
         response = await admin_api.list_interviews(job_id=job_id)
