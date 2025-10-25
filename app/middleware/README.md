@@ -21,10 +21,12 @@ Middleware executes in reverse order (bottom to top in the stack), so the order 
    - Allows configured frontend URLs
    - Includes X-Request-ID in allowed headers
 
-4. **Exception Handlers** - Standardize error responses
-   - Catches HTTPException, RequestValidationError, and general exceptions
+4. **Exception Handlers** - Standardize error responses (now in `app/api/errors.py`)
+   - Catches DomainError, HTTPException, RequestValidationError, and general exceptions
    - Returns standardized error format
+   - Maps domain exceptions to HTTP status codes
    - Includes request_id in error responses
+   - Supports `EXPOSE_ERROR_DETAILS` config flag
 
 5. **Rate Limiting** - Setup function
    - Configures rate limiter
@@ -34,9 +36,31 @@ Middleware executes in reverse order (bottom to top in the stack), so the order 
 
 - `request_id.py` - Request tracking and correlation
 - `logging.py` - HTTP access logs with timing
-- `errors.py` - Standardized error responses
 - `cors.py` - CORS configuration
 - `rate_limit.py` - Rate limiting setup
+- ~~`errors.py`~~ **MOVED TO** `app/api/errors.py` - Exception handlers
+
+## Error Handling Architecture
+
+Error handling now follows clean architecture:
+
+- **Domain Exceptions** (`app/core/errors.py`) - Pure Python exceptions with no framework dependencies
+  - `DomainError` - Base class
+  - `NotFoundError` - Resource not found (404)
+  - `ValidationError` - Input validation failed (422)
+  - `ExternalServiceError` - Ashby/Slack API failures (502)
+  - `DatabaseError` - PostgreSQL failures (500)
+  - `ConfigurationError` - Missing/invalid config (500)
+
+- **FastAPI Handlers** (`app/api/errors.py`) - Maps domain exceptions to HTTP responses
+  - Translates exception codes to HTTP status codes
+  - Includes error context when `EXPOSE_ERROR_DETAILS=true`
+  - Logs domain errors at WARNING level, unexpected at ERROR
+
+- **Service Boundaries** (`@service_boundary` decorator) - Converts native exceptions at service entry points
+  - Catches `asyncpg.PostgresError` → `DatabaseError`
+  - Catches `aiohttp.ClientError` → `ExternalServiceError`
+  - Passes through `DomainError` unchanged
 
 ## Error Format
 
@@ -54,9 +78,13 @@ All errors return this standardized format:
 ```
 
 Error codes:
-- `HTTP_XXX` - HTTP status code errors (400, 401, 404, etc.)
-- `VALIDATION_ERROR` - Pydantic validation failures (includes details)
-- `INTERNAL_ERROR` - Unexpected server errors
+- `NOT_FOUND` - Resource not found (404)
+- `VALIDATION_ERROR` - Input validation failed (422)
+- `EXTERNAL_SERVICE_ERROR` - External API failure (502)
+- `DATABASE_ERROR` - Database operation failed (500)
+- `CONFIGURATION_ERROR` - System misconfigured (500)
+- `HTTP_XXX` - HTTP status code errors (400, 401, etc.)
+- `INTERNAL_ERROR` - Unexpected server errors (500)
 
 ## Request ID
 
@@ -83,5 +111,6 @@ async def my_endpoint():
 
 ## Testing
 
-Each middleware has comprehensive unit tests in `tests/unit/test_middleware_*.py`.
+Middleware tests in `tests/unit/test_middleware_*.py`.
+Error handling tests in `tests/unit/test_api_errors.py`.
 

@@ -857,23 +857,50 @@ All errors follow this standardized format:
 }
 ```
 
+The `details` field is only included when `EXPOSE_ERROR_DETAILS=true` (default for dev/staging).
+
 **Error Codes:**
 
-| Code | Description |
-|------|-------------|
-| `HTTP_400` | Bad Request - Invalid JSON, malformed payload |
-| `HTTP_401` | Unauthorized - Invalid signature |
-| `HTTP_404` | Not Found - Resource doesn't exist |
-| `HTTP_422` | Unprocessable Entity - Validation error |
-| `HTTP_429` | Too Many Requests - Rate limit exceeded |
-| `HTTP_500` | Internal Error - Unexpected server error |
-| `HTTP_503` | Service Unavailable - Database unavailable |
-| `VALIDATION_ERROR` | Request validation failed (includes details array) |
-| `INTERNAL_ERROR` | Unexpected error occurred |
+| Code | HTTP Status | Description |
+|------|------------|-------------|
+| `NOT_FOUND` | 404 | Resource not found |
+| `VALIDATION_ERROR` | 422 | Request validation failed (includes details array) |
+| `EXTERNAL_SERVICE_ERROR` | 502 | External API (Ashby/Slack) failure |
+| `DATABASE_ERROR` | 500 | Database operation failed |
+| `CONFIGURATION_ERROR` | 500 | System misconfigured |
+| `HTTP_400` | 400 | Bad Request - Invalid JSON, malformed payload |
+| `HTTP_401` | 401 | Unauthorized - Invalid signature |
+| `HTTP_404` | 404 | Not Found - Resource doesn't exist |
+| `HTTP_422` | 422 | Unprocessable Entity - Validation error |
+| `HTTP_429` | 429 | Too Many Requests - Rate limit exceeded |
+| `HTTP_500` | 500 | Internal Error - Unexpected server error |
+| `HTTP_503` | 503 | Service Unavailable - Database unavailable |
+| `INTERNAL_ERROR` | 500 | Unexpected error occurred |
 
 **Request ID:**
 
 All responses (success and error) include `X-Request-ID` header. Reference this ID when reporting issues.
+
+**Error Details:**
+
+When `EXPOSE_ERROR_DETAILS=true` (default for dev/staging), errors include a `details` object with additional context:
+
+```json
+{
+  "error": {
+    "code": "EXTERNAL_SERVICE_ERROR",
+    "message": "Ashby API request failed: Invalid request",
+    "details": {
+      "service": "ashby",
+      "endpoint": "candidate.info",
+      "candidate_id": "abc-123"
+    },
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+Set `EXPOSE_ERROR_DETAILS=false` in production to hide sensitive details.
 
 **Example Error Response:**
 

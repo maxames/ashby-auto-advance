@@ -498,9 +498,10 @@ class TestEvaluateRuleRequirements:
                 ],
             )
 
-            assert (
-                result["all_passed"] is should_pass
-            ), f"Operator {operator} with threshold {threshold} and value {score_value} should {'pass' if should_pass else 'fail'}"
+            assert result["all_passed"] is should_pass, (
+                f"Operator {operator} with threshold {threshold} and value "
+                f"{score_value} should {'pass' if should_pass else 'fail'}"
+            )
 
 
 class TestGetTargetStageForRule:
@@ -598,7 +599,9 @@ class TestGetTargetStageForRule:
             AsyncMock(return_value=mock_stages),
         )
 
-        with pytest.raises(ValueError, match="No next stage found"):
+        from app.core.errors import NotFoundError
+
+        with pytest.raises(NotFoundError, match="No next stage found"):
             await get_target_stage_for_rule(
                 rule_id=rule_data["rule_id"],
                 current_stage_id=current_stage_id,

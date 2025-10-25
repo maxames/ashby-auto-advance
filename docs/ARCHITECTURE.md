@@ -177,29 +177,78 @@ Purpose: Cross-cutting HTTP request/response handling
 Responsibilities:
 - Request ID generation and tracking
 - Request/response logging with timing
-- Error standardization for frontend
 - CORS configuration
 - Rate limiting
 
 Files:
 - `request_id.py` - Unique ID per request for log correlation
 - `logging.py` - HTTP access logs with timing and errors
-- `errors.py` - Consistent error response format
 - `cors.py` - CORS configuration
 - `rate_limit.py` - Rate limiting setup
+- `__init__.py` - Re-exports exception handlers from `app/api/errors.py`
 
 What it does NOT do:
 - Business logic
 - Route handling (routes are in `/api/`)
 - Core app setup (that's in `/core/`)
+- Exception definitions (moved to `/core/errors.py`)
 
 **Distinction from `/api/`**:
-- `/api/` - Route handlers (endpoint-specific logic)
+- `/api/` - Route handlers (endpoint-specific logic) + exception handlers
 - `/middleware/` - Cross-cutting HTTP concerns (all endpoints)
 
 **Distinction from `/core/`**:
-- `/core/` - Application infrastructure (config, database, logging setup)
+- `/core/` - Application infrastructure (config, database, logging setup, domain exceptions)
 - `/middleware/` - HTTP-layer infrastructure (request/response handling)
+
+### Error Handling Architecture
+
+**Purpose:** Clean separation between domain errors and HTTP responses
+
+**Components:**
+
+1. **`/core/errors.py`** - Domain Exceptions (Pure Python)
+   - No FastAPI imports - framework-independent, portable, testable
+   - `DomainError` base class with `code` and `context` attributes
+   - Specific exception types:
+     - `NotFoundError` - Resource not found (404)
+     - `ValidationError` - Input validation failed (422)
+     - `ExternalServiceError` - Ashby/Slack API failures (502)
+     - `DatabaseError` - PostgreSQL failures (500)
+     - `ConfigurationError` - Missing/invalid config (500)
+   - `@service_boundary` decorator - Automatically converts native exceptions to domain exceptions
+
+2. **`/api/errors.py`** - FastAPI Exception Handlers
+   - Maps domain exceptions to HTTP status codes via `ERROR_STATUS_MAP`
+   - Standardized JSON error format: `{"error": {"code": "...", "message": "...", "details": {...}, "request_id": "..."}}`
+   - Configurable error detail exposure via `EXPOSE_ERROR_DETAILS` setting
+   - Proper logging levels (WARNING for domain errors, ERROR for unexpected)
+   - Registers handlers via `setup_exception_handlers(app)`
+
+**Service Boundary Pattern:**
+
+Services decorated with `@service_boundary` automatically convert infrastructure errors:
+- `asyncpg.PostgresError` → `DatabaseError` (500)
+- `aiohttp.ClientError` → `ExternalServiceError` (502)
+- Unknown exceptions → `DomainError` (500)
+- `DomainError` subclasses → Pass through unchanged
+
+**Example:**
+```python
+@service_boundary
+async def process_schedule_update(schedule: dict[str, Any]) -> None:
+    # If asyncpg.PostgresError occurs, automatically converts to DatabaseError
+    # If aiohttp.ClientError occurs, automatically converts to ExternalServiceError
+    # Business logic can raise domain exceptions directly
+    pass
+```
+
+**Benefits:**
+- Clean separation: services raise domain exceptions, API layer translates to HTTP
+- Single error boundary per service entry point (no scattered try/except)
+- Automatic context capture for debugging (function name, error type)
+- Production-safe error responses (configurable detail exposure)
+- Consistent error format across all endpoints
 
 ## Data Flow
 

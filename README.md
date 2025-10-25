@@ -138,6 +138,7 @@ All configuration is managed through environment variables. See [.env.example](.
 | `ADVANCEMENT_FEEDBACK_TIMEOUT_DAYS` | Days before schedule times out | No (default: 7) |
 | `ADVANCEMENT_FEEDBACK_MIN_WAIT_MINUTES` | Wait period after feedback submission | No (default: 30) |
 | `ADMIN_SLACK_CHANNEL_ID` | Channel ID for error alerts and rejection notifications | No |
+| `EXPOSE_ERROR_DETAILS` | Include error details in API responses (set false in production) | No (default: true) |
 
 ## Testing
 
