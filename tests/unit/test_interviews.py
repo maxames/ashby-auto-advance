@@ -430,3 +430,103 @@ async def test_upsert_schedule_advancement_fetch_failure_handled(clean_db):
         assert row is not None
         assert row["interview_plan_id"] is None
         assert row["job_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_upsert_schedule_retries_advancement_fields_fetch(clean_db):
+    """Test advancement fields fetch retries 3 times with delays [0.5s, 1.0s] on failures."""
+    from unittest.mock import AsyncMock, call
+
+    schedule_id = str(uuid4())
+    app_id = str(uuid4())
+    stage_id = str(uuid4())
+    plan_id = str(uuid4())
+
+    schedule = {
+        "id": schedule_id,
+        "applicationId": app_id,
+        "interviewStageId": stage_id,
+        "candidateId": str(uuid4()),
+        "interviewEvents": [],
+    }
+
+    # Mock to fail twice, then succeed on 3rd attempt
+    mock_stage_info = AsyncMock(
+        side_effect=[
+            Exception("Transient error"),
+            Exception("Still failing"),
+            {"interviewPlanId": plan_id},  # Success on attempt 3
+        ]
+    )
+    mock_sleep = AsyncMock()
+
+    with (
+        patch("app.clients.ashby.fetch_interview_stage_info", mock_stage_info),
+        patch("app.services.interviews.asyncio.sleep", mock_sleep),
+    ):
+        await upsert_schedule_with_events(schedule, schedule_id, "Scheduled")
+
+    # Verify 3 attempts made (attempts 1, 2, 3)
+    assert mock_stage_info.call_count == 3
+
+    # Verify delays [0.5s, 1.0s] - calculated as 0.5 * attempt
+    assert mock_sleep.call_count == 2
+    mock_sleep.assert_has_calls([call(0.5), call(1.0)])
+
+    # Verify schedule was created with advancement fields
+    async with clean_db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT interview_plan_id FROM interview_schedules WHERE schedule_id = $1",
+            schedule_id,
+        )
+        assert row is not None
+        assert str(row["interview_plan_id"]) == plan_id
+
+
+@pytest.mark.asyncio
+async def test_upsert_schedule_continues_after_advancement_fields_retry_exhaustion(
+    clean_db,
+):
+    """Test schedule is still created even when all advancement field retries fail."""
+    from unittest.mock import AsyncMock
+
+    schedule_id = str(uuid4())
+    app_id = str(uuid4())
+    stage_id = str(uuid4())
+
+    schedule = {
+        "id": schedule_id,
+        "applicationId": app_id,
+        "interviewStageId": stage_id,
+        "candidateId": str(uuid4()),
+        "interviewEvents": [],
+    }
+
+    # Mock to always fail
+    mock_stage_info = AsyncMock(side_effect=Exception("Persistent API error"))
+    mock_sleep = AsyncMock()
+
+    with (
+        patch("app.clients.ashby.fetch_interview_stage_info", mock_stage_info),
+        patch("app.services.interviews.asyncio.sleep", mock_sleep),
+    ):
+        # Should not raise, just log warnings
+        await upsert_schedule_with_events(schedule, schedule_id, "Scheduled")
+
+    # Verify 3 attempts made
+    assert mock_stage_info.call_count == 3
+
+    # Verify 2 sleep calls
+    assert mock_sleep.call_count == 2
+
+    # Verify schedule was still created (graceful degradation - without advancement fields)
+    async with clean_db.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM interview_schedules WHERE schedule_id = $1",
+            schedule_id,
+        )
+        assert row is not None
+        assert str(row["schedule_id"]) == schedule_id
+        assert str(row["application_id"]) == app_id
+        assert row["interview_plan_id"] is None  # Failed to fetch
+        assert row["job_id"] is None

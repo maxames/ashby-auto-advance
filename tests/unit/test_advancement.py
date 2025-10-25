@@ -389,7 +389,9 @@ class TestExecuteAdvancement:
             assert "API Error" in execution["failure_reason"]
 
     @pytest.mark.asyncio
-    async def test_marks_feedback_as_processed(self, clean_db, sample_interview_event, monkeypatch):
+    async def test_marks_feedback_as_processed(
+        self, clean_db, sample_interview_event, monkeypatch
+    ):
         """Test marks feedback as processed after advancement."""
         from unittest.mock import AsyncMock
 
@@ -441,3 +443,100 @@ class TestExecuteAdvancement:
             )
             assert feedback_record is not None
             assert feedback_record["processed_for_advancement_at"] is not None
+
+    @pytest.mark.asyncio
+    async def test_execute_advancement_retries_on_transient_failure(
+        self, clean_db, monkeypatch
+    ):
+        """Test advancement retries 3 times with delays [2s, 4s] on API failures."""
+        from unittest.mock import AsyncMock, call
+
+        schedule = await create_test_schedule(clean_db)
+        rule = await create_test_rule(clean_db)
+
+        # Mock to fail twice, then succeed on 3rd attempt
+        mock_advance = AsyncMock(
+            side_effect=[
+                Exception("Transient API error"),
+                Exception("Still failing"),
+                {"id": schedule["application_id"]},  # Success on attempt 3
+            ]
+        )
+        mock_sleep = AsyncMock()
+
+        from app.services import advancement
+
+        monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr("app.services.advancement.asyncio.sleep", mock_sleep)
+
+        result = await execute_advancement(
+            schedule_id=schedule["schedule_id"],
+            application_id=schedule["application_id"],
+            rule_id=rule["rule_id"],
+            target_stage_id=rule["target_stage_id"],
+            from_stage_id=schedule["interview_stage_id"],
+            evaluation_results={},
+            dry_run=False,
+        )
+
+        # Should succeed on 3rd attempt
+        assert result["success"] is True
+        assert result["status"] == "success"
+
+        # Verify 3 API calls were made (attempts 0, 1, 2)
+        assert mock_advance.call_count == 3
+
+        # Verify delays [2s, 4s] - only 2 sleeps (after attempts 0 and 1, not after success)
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_has_calls([call(2), call(4)])
+
+    @pytest.mark.asyncio
+    async def test_execute_advancement_exhausts_all_retries(
+        self, clean_db, monkeypatch
+    ):
+        """Test advancement fails gracefully after exhausting all 3 retry attempts."""
+        from unittest.mock import AsyncMock, call
+
+        schedule = await create_test_schedule(clean_db)
+        rule = await create_test_rule(clean_db)
+
+        # Mock to always fail
+        mock_advance = AsyncMock(side_effect=Exception("Persistent API error"))
+        mock_sleep = AsyncMock()
+
+        from app.services import advancement
+
+        monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
+        monkeypatch.setattr("app.services.advancement.asyncio.sleep", mock_sleep)
+
+        result = await execute_advancement(
+            schedule_id=schedule["schedule_id"],
+            application_id=schedule["application_id"],
+            rule_id=rule["rule_id"],
+            target_stage_id=rule["target_stage_id"],
+            from_stage_id=schedule["interview_stage_id"],
+            evaluation_results={},
+            dry_run=False,
+        )
+
+        # Should fail after all retries
+        assert result["success"] is False
+        assert result["status"] == "failed"
+        assert "Persistent API error" in result["error"]
+
+        # Verify 3 API calls were attempted
+        assert mock_advance.call_count == 3
+
+        # Verify 2 sleep calls with delays [2s, 4s]
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_has_calls([call(2), call(4)])
+
+        # Verify failure audit record was created
+        async with clean_db.acquire() as conn:
+            execution = await conn.fetchrow(
+                "SELECT * FROM advancement_executions WHERE schedule_id = $1",
+                schedule["schedule_id"],
+            )
+            assert execution is not None
+            assert execution["execution_status"] == "failed"
+            assert "Persistent API error" in execution["failure_reason"]
