@@ -77,45 +77,41 @@ async def sync_feedback_forms() -> None:
     cursor: str | None = None
     forms_synced = 0
 
-    try:
-        while True:
-            response = await ashby_client.post(
-                "feedbackFormDefinition.list", {"cursor": cursor, "limit": 100}
+    while True:
+        response = await ashby_client.post(
+            "feedbackFormDefinition.list", {"cursor": cursor, "limit": 100}
+        )
+
+        if not response["success"]:
+            logger.error("feedback_form_sync_failed", error=response.get("error"))
+            break
+
+        for form in response["results"]:
+            form_dict: dict[str, Any] = form
+            await db.execute(
+                """
+                INSERT INTO feedback_form_definitions
+                (form_definition_id, title, definition, is_archived, updated_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                ON CONFLICT (form_definition_id) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    definition = EXCLUDED.definition,
+                    is_archived = EXCLUDED.is_archived,
+                    updated_at = NOW()
+            """,
+                form_dict["id"],
+                form_dict.get("title"),
+                json.dumps(form_dict),
+                form_dict.get("isArchived", False),
             )
+            forms_synced += 1
 
-            if not response["success"]:
-                logger.error("feedback_form_sync_failed", error=response.get("error"))
-                break
+        if not response.get("moreDataAvailable"):
+            break
 
-            for form in response["results"]:
-                form_dict: dict[str, Any] = form
-                await db.execute(
-                    """
-                    INSERT INTO feedback_form_definitions
-                    (form_definition_id, title, definition, is_archived, updated_at)
-                    VALUES ($1, $2, $3, $4, NOW())
-                    ON CONFLICT (form_definition_id) DO UPDATE SET
-                        title = EXCLUDED.title,
-                        definition = EXCLUDED.definition,
-                        is_archived = EXCLUDED.is_archived,
-                        updated_at = NOW()
-                """,
-                    form_dict["id"],
-                    form_dict.get("title"),
-                    json.dumps(form_dict),
-                    form_dict.get("isArchived", False),
-                )
-                forms_synced += 1
+        cursor = response.get("nextCursor")
 
-            if not response.get("moreDataAvailable"):
-                break
-
-            cursor = response.get("nextCursor")
-
-        logger.info("sync_feedback_forms_completed", count=forms_synced)
-
-    except Exception:
-        logger.exception("sync_feedback_forms_error")
+    logger.info("sync_feedback_forms_completed", count=forms_synced)
 
 
 @service_boundary
@@ -130,27 +126,23 @@ async def sync_interviews() -> None:
     cursor = None
     interviews_synced = 0
 
-    try:
-        while True:
-            response = await ashby_client.post("interview.list", {"cursor": cursor, "limit": 100})
+    while True:
+        response = await ashby_client.post("interview.list", {"cursor": cursor, "limit": 100})
 
-            if not response["success"]:
-                logger.error("interview_sync_failed", error=response.get("error"))
-                break
+        if not response["success"]:
+            logger.error("interview_sync_failed", error=response.get("error"))
+            break
 
-            for interview in response["results"]:
-                await _upsert_interview(interview)
-                interviews_synced += 1
+        for interview in response["results"]:
+            await _upsert_interview(interview)
+            interviews_synced += 1
 
-            if not response.get("moreDataAvailable"):
-                break
+        if not response.get("moreDataAvailable"):
+            break
 
-            cursor = response.get("nextCursor")
+        cursor = response.get("nextCursor")
 
-        logger.info("sync_interviews_completed", count=interviews_synced)
-
-    except Exception:
-        logger.exception("sync_interviews_error")
+    logger.info("sync_interviews_completed", count=interviews_synced)
 
 
 async def get_feedback_form_definition(
@@ -263,48 +255,44 @@ async def sync_slack_users() -> None:
     """
     logger.info("sync_slack_users_started")
 
-    try:
-        response = await slack_client.client.users_list()
+    response = await slack_client.client.users_list()
 
-        if not response["ok"]:
-            logger.error("slack_users_list_failed", error=response["error"])
-            return
+    if not response["ok"]:
+        logger.error("slack_users_list_failed", error=response["error"])
+        return
 
-        users_synced = 0
-        users: list[dict[str, Any]] = response.get("members", [])
+    users_synced = 0
+    users: list[dict[str, Any]] = response.get("members", [])
 
-        for user in users:
-            # Skip bots and deleted users
-            if user.get("is_bot") or user.get("deleted"):
-                continue
+    for user in users:
+        # Skip bots and deleted users
+        if user.get("is_bot") or user.get("deleted"):
+            continue
 
-            email = user.get("profile", {}).get("email")
-            if not email:
-                continue
+        email = user.get("profile", {}).get("email")
+        if not email:
+            continue
 
-            await db.execute(
-                """
-                INSERT INTO slack_users
-                (slack_user_id, email, real_name, display_name, is_bot, deleted, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, NOW())
-                ON CONFLICT (slack_user_id) DO UPDATE SET
-                    email = EXCLUDED.email,
-                    real_name = EXCLUDED.real_name,
-                    display_name = EXCLUDED.display_name,
-                    is_bot = EXCLUDED.is_bot,
-                    deleted = EXCLUDED.deleted,
-                    updated_at = NOW()
-            """,
-                user["id"],
-                email,
-                user.get("real_name"),
-                user.get("profile", {}).get("display_name"),
-                user.get("is_bot", False),
-                user.get("deleted", False),
-            )
-            users_synced += 1
+        await db.execute(
+            """
+            INSERT INTO slack_users
+            (slack_user_id, email, real_name, display_name, is_bot, deleted, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            ON CONFLICT (slack_user_id) DO UPDATE SET
+                email = EXCLUDED.email,
+                real_name = EXCLUDED.real_name,
+                display_name = EXCLUDED.display_name,
+                is_bot = EXCLUDED.is_bot,
+                deleted = EXCLUDED.deleted,
+                updated_at = NOW()
+        """,
+            user["id"],
+            email,
+            user.get("real_name"),
+            user.get("profile", {}).get("display_name"),
+            user.get("is_bot", False),
+            user.get("deleted", False),
+        )
+        users_synced += 1
 
-        logger.info("sync_slack_users_completed", count=users_synced)
-
-    except Exception:
-        logger.exception("sync_slack_users_error")
+    logger.info("sync_slack_users_completed", count=users_synced)
