@@ -1,6 +1,7 @@
 """Type stubs for slack_sdk.web.async_client."""
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 class AsyncSlackResponse:
     """Response from Slack async API calls - dict-like."""

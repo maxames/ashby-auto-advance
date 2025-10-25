@@ -3,7 +3,6 @@
 import hmac
 import time
 
-import pytest
 from flaky import flaky
 
 from app.utils.security import verify_ashby_signature

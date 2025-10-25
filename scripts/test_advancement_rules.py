@@ -214,9 +214,7 @@ class TableFormatter:
 
         # Print rows
         for row in rows:
-            row_str = "  ".join(
-                str(cell).ljust(w) for cell, w in zip(row, widths, strict=False)
-            )
+            row_str = "  ".join(str(cell).ljust(w) for cell, w in zip(row, widths, strict=False))
             print(f"  {row_str}")
 
     @staticmethod
@@ -382,9 +380,7 @@ def edit_config(config: dict[str, Any] | None) -> dict[str, Any] | None:
 # ============================================================================
 
 
-async def create_rule_wizard(
-    client: RuleAPIClient, config: dict[str, Any] | None
-) -> None:
+async def create_rule_wizard(client: RuleAPIClient, config: dict[str, Any] | None) -> None:
     """Step-by-step rule creation wizard."""
     fmt = TableFormatter()
     fmt.print_header("Create Advancement Rule - Wizard")
@@ -426,15 +422,11 @@ async def create_rule_wizard(
             include = input("   Include this interview? (y/n): ").strip().lower()
 
             if include == "y":
-                print(
-                    f"   Available score fields: {', '.join(interview['score_fields'])}"
-                )
+                print(f"   Available score fields: {', '.join(interview['score_fields'])}")
                 score_field = input("   Score field to check: ").strip()
 
                 operator = input(
-                    "   Operator (default: {}): ".format(
-                        config.get("default_operator", ">=")
-                    )
+                    "   Operator (default: {}): ".format(config.get("default_operator", ">="))
                 ).strip() or config.get("default_operator", ">=")
 
                 threshold = input(
@@ -511,9 +503,7 @@ async def list_rules_display(client: RuleAPIClient) -> None:
             rule_id = rule["rule_id"][:8] + "..."
             scope = "Global" if not rule["job_id"] else f"Job: {rule['job_id'][:8]}..."
             req_count = len(rule.get("requirements", []))
-            created = (
-                rule.get("created_at", "N/A")[:10] if rule.get("created_at") else "N/A"
-            )
+            created = rule.get("created_at", "N/A")[:10] if rule.get("created_at") else "N/A"
 
             print(f"  {rule_id}")
             print(f"    Scope: {scope}")
@@ -523,9 +513,7 @@ async def list_rules_display(client: RuleAPIClient) -> None:
             print()
 
         # Option to view details
-        view = input(
-            "View details of a rule? Enter rule_id (or press Enter to skip): "
-        ).strip()
+        view = input("View details of a rule? Enter rule_id (or press Enter to skip): ").strip()
         if view:
             await view_rule_details(client, view)
 
@@ -585,11 +573,7 @@ async def delete_rule_interactive(client: RuleAPIClient) -> None:
         await view_rule_details(client, rule_id)
 
         # Confirm deletion
-        confirm = (
-            input("\nAre you sure you want to delete this rule? (yes/no): ")
-            .strip()
-            .lower()
-        )
+        confirm = input("\nAre you sure you want to delete this rule? (yes/no): ").strip().lower()
 
         if confirm != "yes":
             fmt.print_warning("Cancelled")
@@ -622,9 +606,7 @@ async def test_against_candidate(client: RuleAPIClient) -> None:
         candidate_id = input("ID: ").strip()
 
         # Try to determine if it's a schedule or application
-        id_type = (
-            input("Is this a schedule_id or application_id? (s/a): ").strip().lower()
-        )
+        id_type = input("Is this a schedule_id or application_id? (s/a): ").strip().lower()
 
         print("\nTriggering evaluation...")
 
@@ -674,9 +656,7 @@ async def batch_test_rules(client: RuleAPIClient) -> None:
     fmt.print_header("Batch Test Rules")
 
     try:
-        limit = (
-            input("Number of recent schedules to test (default: 10): ").strip() or "10"
-        )
+        limit = input("Number of recent schedules to test (default: 10): ").strip() or "10"
         limit = int(limit)
 
         fmt.print_info("Querying database for recent completed schedules...")
@@ -899,9 +879,7 @@ async def compare_dry_run_vs_production() -> None:
     fmt.print_header("Dry-Run vs Production Comparison")
 
     try:
-        fmt.print_info(
-            "This feature compares dry-run executions with actual executions"
-        )
+        fmt.print_info("This feature compares dry-run executions with actual executions")
         fmt.print_info("for the same schedule to see if predictions matched reality.\n")
 
         # Find schedules with both dry_run and success/failed executions
@@ -920,14 +898,10 @@ async def compare_dry_run_vs_production() -> None:
         schedules = await query_database(query)
 
         if not schedules:
-            fmt.print_warning(
-                "No schedules found with both dry-run and real executions"
-            )
+            fmt.print_warning("No schedules found with both dry-run and real executions")
             return
 
-        print(
-            f"Found {len(schedules)} schedule(s) with both dry-run and real executions:\n"
-        )
+        print(f"Found {len(schedules)} schedule(s) with both dry-run and real executions:\n")
 
         for schedule in schedules:
             schedule_id = schedule["schedule_id"]
@@ -1004,9 +978,7 @@ async def show_dry_run_status(client: RuleAPIClient) -> None:
     fmt.print_header("Server Dry-Run Status")
 
     fmt.print_info("Checking server configuration...")
-    fmt.print_warning(
-        "Note: This checks based on recent executions, not the actual config setting"
-    )
+    fmt.print_warning("Note: This checks based on recent executions, not the actual config setting")
 
     try:
         # Check recent executions to infer dry-run status
@@ -1087,9 +1059,7 @@ async def show_menu(base_url: str, config: dict[str, Any] | None) -> None:
     print("\n  q. Quit")
 
 
-async def interactive_menu(
-    base_url: str, initial_config: dict[str, Any] | None = None
-) -> None:
+async def interactive_menu(base_url: str, initial_config: dict[str, Any] | None = None) -> None:
     """Main interactive menu loop."""
     fmt = TableFormatter()
     client = RuleAPIClient(base_url)
@@ -1098,9 +1068,7 @@ async def interactive_menu(
     # Initial health check
     fmt.print_info("Checking connection...")
     if not await check_health(client):
-        fmt.print_error(
-            "Failed to connect to server. Please check the URL and try again."
-        )
+        fmt.print_error("Failed to connect to server. Please check the URL and try again.")
         return
 
     while True:

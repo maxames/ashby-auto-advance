@@ -45,9 +45,7 @@ async def test_complete_metadata_sync_flow(clean_db):
     }
 
     with (
-        patch(
-            "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-        ) as mock_post,
+        patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post,
         patch(
             "app.services.metadata_sync.list_interview_stages_for_plan",
             new_callable=AsyncMock,
@@ -120,9 +118,7 @@ async def test_metadata_sync_with_multiple_jobs(clean_db):
         "isArchived": False,
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.side_effect = [
             {"success": True, "results": mock_jobs, "moreDataAvailable": False},
             {"success": True, "results": [mock_plan], "moreDataAvailable": False},

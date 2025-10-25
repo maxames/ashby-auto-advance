@@ -35,9 +35,7 @@ async def test_sync_jobs_fetches_and_stores(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await metadata_sync_module.sync_jobs()
@@ -97,9 +95,7 @@ async def test_sync_jobs_handles_pagination(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.side_effect = [page1_response, page2_response]
 
         await metadata_sync_module.sync_jobs()
@@ -144,9 +140,7 @@ async def test_sync_jobs_upserts_existing_jobs(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await metadata_sync_module.sync_jobs()
@@ -179,9 +173,7 @@ async def test_sync_jobs_creates_plan_mappings(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await metadata_sync_module.sync_jobs()
@@ -210,9 +202,7 @@ async def test_sync_jobs_api_error_handled(clean_db):
         "error": "API Error",
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         # Should not raise exception
@@ -243,9 +233,7 @@ async def test_sync_interview_plans_fetches_and_stores(clean_db):
         "moreDataAvailable": False,
     }
 
-    with patch(
-        "app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock
-    ) as mock_post:
+    with patch("app.services.metadata_sync.ashby_client.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = mock_response
 
         await metadata_sync_module.sync_interview_plans()

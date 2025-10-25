@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-import respx
-from httpx import Response
 
 from app.clients.ashby import (
     advance_candidate_stage,

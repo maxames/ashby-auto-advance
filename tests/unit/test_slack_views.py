@@ -2,8 +2,6 @@
 
 import json
 
-import pytest
-
 from app.clients.slack_views import build_rejection_notification
 
 

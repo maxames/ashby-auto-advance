@@ -42,12 +42,10 @@ async def test_complete_http_advancement_flow(
         event_id=event_id,
     )
     payload["data"]["interviewSchedule"]["applicationId"] = application_id
-    payload["data"]["interviewSchedule"]["interviewStageId"] = rule_data[
-        "interview_stage_id"
+    payload["data"]["interviewSchedule"]["interviewStageId"] = rule_data["interview_stage_id"]
+    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = sample_interview[
+        "interview_id"
     ]
-    payload["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = (
-        sample_interview["interview_id"]
-    )
 
     body = json.dumps(payload)
     signature = sign_webhook(body, settings.ashby_webhook_secret)
@@ -92,9 +90,7 @@ async def test_complete_http_advancement_flow(
     from app.services import advancement
 
     monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
-    monkeypatch.setattr(
-        "app.services.advancement.settings.advancement_dry_run_mode", False
-    )
+    monkeypatch.setattr("app.services.advancement.settings.advancement_dry_run_mode", False)
 
     # Trigger advancement evaluation
     await advancement.process_advancement_evaluations()
@@ -144,9 +140,9 @@ async def test_webhook_updates_schedule_status(
     # Send initial webhook (Scheduled)
     payload1 = create_ashby_webhook_payload(schedule_id=schedule_id, status="Scheduled")
     # Use existing interview_id to avoid FK violations
-    payload1["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = (
-        sample_interview["interview_id"]
-    )
+    payload1["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = sample_interview[
+        "interview_id"
+    ]
 
     body1 = json.dumps(payload1)
     signature1 = sign_webhook(body1, settings.ashby_webhook_secret)
@@ -173,9 +169,9 @@ async def test_webhook_updates_schedule_status(
     # Send status update (Complete)
     payload2 = create_ashby_webhook_payload(schedule_id=schedule_id, status="Complete")
     # Use same interview_id
-    payload2["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = (
-        sample_interview["interview_id"]
-    )
+    payload2["data"]["interviewSchedule"]["interviewEvents"][0]["interviewId"] = sample_interview[
+        "interview_id"
+    ]
 
     body2 = json.dumps(payload2)
     signature2 = sign_webhook(body2, settings.ashby_webhook_secret)

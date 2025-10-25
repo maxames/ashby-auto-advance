@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,9 +15,7 @@ async def test_connect_success():
     db = Database()
     mock_pool = MagicMock()
 
-    with patch(
-        "app.core.database.asyncpg.create_pool", new_callable=AsyncMock
-    ) as mock_create:
+    with patch("app.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create:
         mock_create.return_value = mock_pool
 
         await db.connect()
@@ -41,9 +38,7 @@ async def test_connect_retry_on_failure():
     mock_pool = MagicMock()
 
     with (
-        patch(
-            "app.core.database.asyncpg.create_pool", new_callable=AsyncMock
-        ) as mock_create,
+        patch("app.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create,
         patch("app.core.database.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
     ):
         # Fail first attempt, succeed on second
@@ -67,9 +62,7 @@ async def test_connect_max_retries_exhausted():
     db = Database()
 
     with (
-        patch(
-            "app.core.database.asyncpg.create_pool", new_callable=AsyncMock
-        ) as mock_create,
+        patch("app.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_create,
         patch("app.core.database.asyncio.sleep", new_callable=AsyncMock),
     ):
         # Always fail

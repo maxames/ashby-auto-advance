@@ -75,15 +75,11 @@ class TestAdvancementFlow:
         await sync_feedback_for_application(sample_interview_event["application_id"])
 
         # 3. Mock advancement API
-        mock_advance = AsyncMock(
-            return_value={"id": sample_interview_event["application_id"]}
-        )
+        mock_advance = AsyncMock(return_value={"id": sample_interview_event["application_id"]})
         monkeypatch.setattr(advancement, "advance_candidate_stage", mock_advance)
 
         # Disable dry-run mode for this test
-        monkeypatch.setattr(
-            "app.services.advancement.settings.advancement_dry_run_mode", False
-        )
+        monkeypatch.setattr("app.services.advancement.settings.advancement_dry_run_mode", False)
 
         # 4. Run evaluation (simulating scheduled job)
         await process_advancement_evaluations()
@@ -318,9 +314,7 @@ class TestAdvancementFlow:
         )
 
         # Disable dry-run mode for actual advancement test
-        monkeypatch.setattr(
-            "app.services.advancement.settings.advancement_dry_run_mode", False
-        )
+        monkeypatch.setattr("app.services.advancement.settings.advancement_dry_run_mode", False)
 
         # Run evaluation again
         await process_advancement_evaluations()

@@ -2,8 +2,6 @@
 
 import json
 
-import pytest
-
 from tests.fixtures.sample_payloads import (
     SLACK_BUTTON_CLICK,
     SLACK_MODAL_SUBMISSION,

@@ -1,7 +1,5 @@
 """Contract tests for Ashby webhook payload structure validation."""
 
-import pytest
-
 from tests.fixtures.sample_payloads import (
     ASHBY_CANDIDATE_INFO,
     ASHBY_FEEDBACK_FORM,

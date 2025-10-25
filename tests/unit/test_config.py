@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import pytest
 from pydantic import ValidationError
 
@@ -93,9 +91,7 @@ def test_settings_from_env_file(monkeypatch):
     monkeypatch.setenv("ASHBY_API_KEY", "env_api_key")
     monkeypatch.setenv("SLACK_BOT_TOKEN", "xoxb-env-token")
     monkeypatch.setenv("SLACK_SIGNING_SECRET", "env_signing_secret")
-    monkeypatch.setenv(
-        "DEFAULT_ARCHIVE_REASON_ID", "550e8400-e29b-41d4-a716-446655440000"
-    )
+    monkeypatch.setenv("DEFAULT_ARCHIVE_REASON_ID", "550e8400-e29b-41d4-a716-446655440000")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("ADVANCEMENT_DRY_RUN_MODE", "true")
 

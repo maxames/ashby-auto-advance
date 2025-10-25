@@ -116,7 +116,6 @@ class TestCreateAdvancementRule:
     @pytest.mark.asyncio
     async def test_handles_transaction_rollback_on_error(self, clean_db, monkeypatch):
         """Test transaction rolls back if any insert fails."""
-        from unittest.mock import AsyncMock
 
         # This would require mocking database operations to force an error
         # For now, we'll test that invalid data raises an exception

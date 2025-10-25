@@ -1,7 +1,7 @@
 """Unit tests for advancement service."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -96,7 +96,6 @@ class TestGetSchedulesReadyForEvaluation:
     @pytest.mark.asyncio
     async def test_timeout_window_filtering(self, clean_db):
         """Test filters out schedules older than timeout window."""
-        from app.core.config import settings
 
         plan_id = str(uuid4())
         stage_id = str(uuid4())
@@ -389,9 +388,7 @@ class TestExecuteAdvancement:
             assert "API Error" in execution["failure_reason"]
 
     @pytest.mark.asyncio
-    async def test_marks_feedback_as_processed(
-        self, clean_db, sample_interview_event, monkeypatch
-    ):
+    async def test_marks_feedback_as_processed(self, clean_db, sample_interview_event, monkeypatch):
         """Test marks feedback as processed after advancement."""
         from unittest.mock import AsyncMock
 
@@ -445,9 +442,7 @@ class TestExecuteAdvancement:
             assert feedback_record["processed_for_advancement_at"] is not None
 
     @pytest.mark.asyncio
-    async def test_execute_advancement_retries_on_transient_failure(
-        self, clean_db, monkeypatch
-    ):
+    async def test_execute_advancement_retries_on_transient_failure(self, clean_db, monkeypatch):
         """Test advancement retries 3 times with delays [2s, 4s] on API failures."""
         from unittest.mock import AsyncMock, call
 
@@ -491,9 +486,7 @@ class TestExecuteAdvancement:
         mock_sleep.assert_has_calls([call(2), call(4)])
 
     @pytest.mark.asyncio
-    async def test_execute_advancement_exhausts_all_retries(
-        self, clean_db, monkeypatch
-    ):
+    async def test_execute_advancement_exhausts_all_retries(self, clean_db, monkeypatch):
         """Test advancement fails gracefully after exhausting all 3 retry attempts."""
         from unittest.mock import AsyncMock, call
 

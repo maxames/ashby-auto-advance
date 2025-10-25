@@ -1,6 +1,6 @@
 """Unit tests for rules evaluation engine."""
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -498,9 +498,9 @@ class TestEvaluateRuleRequirements:
                 ],
             )
 
-            assert result["all_passed"] is should_pass, (
-                f"Operator {operator} with threshold {threshold} and value {score_value} should {'pass' if should_pass else 'fail'}"
-            )
+            assert (
+                result["all_passed"] is should_pass
+            ), f"Operator {operator} with threshold {threshold} and value {score_value} should {'pass' if should_pass else 'fail'}"
 
 
 class TestGetTargetStageForRule:
