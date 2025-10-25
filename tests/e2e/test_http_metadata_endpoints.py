@@ -26,6 +26,7 @@ async def test_list_jobs_http_endpoint(http_client, clean_db):
 
     # Verify response
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
     data = response.json()
     assert "jobs" in data
     assert len(data["jobs"]) == 1  # Only open job
@@ -74,6 +75,7 @@ async def test_get_job_plans_http_endpoint(http_client, clean_db):
 
     # Verify response
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
     data = response.json()
     assert "plans" in data
     assert len(data["plans"]) == 2
@@ -100,6 +102,7 @@ async def test_get_plan_stages_http_endpoint(http_client, clean_db):
 
     # Verify response
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
     data = response.json()
     assert "stages" in data
     assert len(data["stages"]) == 2
@@ -121,6 +124,7 @@ async def test_list_interviews_http_endpoint(http_client, clean_db, sample_inter
 
     # Verify response
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
     data = response.json()
     assert "interviews" in data
     assert len(data["interviews"]) >= 1
@@ -136,6 +140,7 @@ async def test_metadata_endpoints_have_openapi_schemas(http_client):
     response = await http_client.get("/openapi.json")
 
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
     openapi = response.json()
 
     # Verify metadata endpoints exist in OpenAPI spec

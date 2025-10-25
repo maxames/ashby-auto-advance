@@ -70,6 +70,7 @@ async def test_rejection_button_click_http(http_client, clean_db, monkeypatch):
 
     # Note: Slack interactions return 200 immediately for async processing
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
 
 
 @pytest.mark.e2e
@@ -104,6 +105,7 @@ async def test_slack_signature_verification_invalid(http_client):
     )
 
     assert response.status_code == 401
+    assert "X-Request-ID" in response.headers
 
 
 @pytest.mark.e2e
@@ -145,3 +147,4 @@ async def test_slack_old_timestamp_rejected(http_client):
 
     # Should reject old timestamps
     assert response.status_code == 401
+    assert "X-Request-ID" in response.headers

@@ -108,7 +108,7 @@ async def test_admin_stats_returns_statistics():
 @pytest.mark.asyncio
 async def test_admin_create_rule_valid_input_creates_rule():
     """Valid rule creation returns rule_id."""
-    from app.models.advancement import (
+    from app.schemas.advancement import (
         AdvancementRuleActionCreate,
         AdvancementRuleCreate,
         AdvancementRuleRequirementCreate,
@@ -167,7 +167,7 @@ async def test_admin_create_rule_valid_input_creates_rule():
 @pytest.mark.asyncio
 async def test_admin_create_rule_converts_pydantic_to_dict():
     """Pydantic models converted for service layer."""
-    from app.models.advancement import (
+    from app.schemas.advancement import (
         AdvancementRuleActionCreate,
         AdvancementRuleCreate,
         AdvancementRuleRequirementCreate,

@@ -24,6 +24,10 @@ async def test_health_check_success(http_client, clean_db):
     response = await http_client.get("/health")
 
     assert response.status_code == 200
+
+    # Verify X-Request-ID header is present
+    assert "X-Request-ID" in response.headers
+
     data = response.json()
 
     # Verify response structure
@@ -60,9 +64,16 @@ async def test_health_check_database_unavailable(http_client):
         response = await http_client.get("/health")
 
         assert response.status_code == 503
+
+        # Verify X-Request-ID header is present even on errors
+        assert "X-Request-ID" in response.headers
+
+        # Check new standardized error format
         data = response.json()
-        assert "detail" in data
-        assert "Database unavailable" in data["detail"]
+        assert "error" in data
+        assert data["error"]["code"] == "HTTP_503"
+        assert "Database unavailable" in data["error"]["message"]
+        assert "request_id" in data["error"]
 
 
 @pytest.mark.asyncio
@@ -80,6 +91,10 @@ async def test_root_endpoint(http_client):
     response = await http_client.get("/")
 
     assert response.status_code == 200
+
+    # Verify X-Request-ID header is present
+    assert "X-Request-ID" in response.headers
+
     data = response.json()
     assert "message" in data
     assert "Ashby Auto-Advancement" in data["message"]

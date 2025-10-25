@@ -27,6 +27,7 @@ async def test_webhook_signature_verification_invalid(http_client):
     )
 
     assert response.status_code == 401
+    assert "X-Request-ID" in response.headers
     assert "Invalid signature" in response.text or "Unauthorized" in response.text
 
 
@@ -61,6 +62,7 @@ async def test_webhook_signature_verification_valid(
     )
 
     assert response.status_code == 204
+    assert "X-Request-ID" in response.headers
 
 
 @pytest.mark.e2e
@@ -96,6 +98,7 @@ async def test_webhook_to_database_flow(http_client, clean_db, mock_ashby_api, s
     )
 
     assert response.status_code == 204
+    assert "X-Request-ID" in response.headers
 
     # Verify data in database
     async with clean_db.acquire() as conn:
@@ -209,6 +212,7 @@ async def test_concurrent_webhooks_race_condition(
     # All should succeed
     for response in responses:
         assert response.status_code == 204
+    assert "X-Request-ID" in response.headers
 
     # Verify schedule exists and has final state
     async with clean_db.acquire() as conn:

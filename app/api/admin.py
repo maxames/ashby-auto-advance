@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from structlog import get_logger
 
-from app.models.advancement import (
+from app.schemas.advancement import (
     AdvancementRuleCreate,
     AdvancementRuleResponse,
     AdvancementStatsResponse,

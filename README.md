@@ -100,7 +100,7 @@ app/
 ├── clients/      # External API clients (Ashby, Slack)
 ├── services/     # Business logic and orchestration
 ├── core/         # Infrastructure (database, config, logging)
-├── models/       # Pydantic models for request validation
+├── schemas/      # Pydantic schemas for API validation
 ├── types/        # TypedDict definitions for external APIs
 └── utils/        # Generic helpers (security, time)
 ```

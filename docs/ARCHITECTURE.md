@@ -112,18 +112,18 @@ What it does NOT do:
 - HTTP handling
 - External API calls
 
-### `/models/` - Data Structures
+### `/schemas/` - API Validation Schemas
 
-Purpose: Define data shapes and validation rules for inbound requests
+Purpose: Define data shapes and validation rules for API requests and responses
 
 Responsibilities:
-- Pydantic models for request validation
+- Pydantic schemas for request validation
 - Runtime validation logic
 - API request/response contracts
 
 Files:
-- `webhooks.py` - Ashby webhook payload models
-- `advancement.py` - Advancement rule input/response models
+- `webhooks.py` - Ashby webhook payload schemas
+- `advancement.py` - Advancement rule input/response schemas
 
 What it does NOT do:
 - Business logic
@@ -141,13 +141,15 @@ Files:
 - `slack.py` - Slack payload types (SlackUserTD, SlackButtonMetadataTD, SlackModalMetadataTD, etc.)
 
 What it does NOT do:
-- Runtime validation (use Pydantic models in `/models/` for that)
+- Runtime validation (use Pydantic schemas in `/schemas/` for that)
 - Business logic
 - API calls
 
-Distinction from `/models/`:
-- `/models/` - Runtime validation with Pydantic for inbound requests
+Distinction from `/types/`:
+- `/schemas/` - Runtime validation with Pydantic for API requests/responses
 - `/types/` - Static type hints for external API responses (no validation)
+
+Note: This app uses raw SQL (no ORM), so there is no `/models/` directory for database models.
 
 ### `/utils/` - Generic Helpers
 
@@ -166,6 +168,37 @@ What it does NOT do:
 - Business logic
 - Database access
 - API calls
+
+### `/middleware/` - HTTP Infrastructure
+
+Purpose: Cross-cutting HTTP request/response handling
+
+Responsibilities:
+- Request ID generation and tracking
+- Request/response logging with timing
+- Error standardization for frontend
+- CORS configuration
+- Rate limiting
+
+Files:
+- `request_id.py` - Unique ID per request for log correlation
+- `logging.py` - HTTP access logs with timing and errors
+- `errors.py` - Consistent error response format
+- `cors.py` - CORS configuration
+- `rate_limit.py` - Rate limiting setup
+
+What it does NOT do:
+- Business logic
+- Route handling (routes are in `/api/`)
+- Core app setup (that's in `/core/`)
+
+**Distinction from `/api/`**:
+- `/api/` - Route handlers (endpoint-specific logic)
+- `/middleware/` - Cross-cutting HTTP concerns (all endpoints)
+
+**Distinction from `/core/`**:
+- `/core/` - Application infrastructure (config, database, logging setup)
+- `/middleware/` - HTTP-layer infrastructure (request/response handling)
 
 ## Data Flow
 
@@ -384,10 +417,10 @@ External API responses are typed using `TypedDict` at client boundaries:
 **Directory structure:**
 - `app/types/ashby.py` - Ashby API response types
 - `app/types/slack.py` - Slack payload types
-- `app/models/` - Pydantic models for request validation
+- `app/schemas/` - Pydantic schemas for API validation
 
 **Distinction:**
-- `/models/` handles **runtime validation** (Pydantic for API requests)
+- `/schemas/` handles **runtime validation** (Pydantic for API requests)
 - `/types/` handles **static structures** (TypedDict for API responses)
 
 **Pattern:**
@@ -444,18 +477,20 @@ Each layer has a single, well-defined purpose:
 api → services → clients
 api → clients
   ↓      ↓         ↓
-       core
+     middleware → core
 ```
 
 Allowed:
 - Services call clients
 - API calls services
 - API calls clients
+- Middleware uses core
 - Everything can use core
 
 Forbidden:
 - Clients call services
 - Core calls anything
+- Services call middleware
 - Circular dependencies
 
 ### 3. Idempotency

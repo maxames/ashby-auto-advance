@@ -844,11 +844,52 @@ Get advancement execution statistics and monitoring data.
 
 ### Standard Error Format
 
-All errors follow this format:
+All errors follow this standardized format:
 
 ```json
 {
-  "detail": "Error message"
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable error message",
+    "details": {},
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+**Error Codes:**
+
+| Code | Description |
+|------|-------------|
+| `HTTP_400` | Bad Request - Invalid JSON, malformed payload |
+| `HTTP_401` | Unauthorized - Invalid signature |
+| `HTTP_404` | Not Found - Resource doesn't exist |
+| `HTTP_422` | Unprocessable Entity - Validation error |
+| `HTTP_429` | Too Many Requests - Rate limit exceeded |
+| `HTTP_500` | Internal Error - Unexpected server error |
+| `HTTP_503` | Service Unavailable - Database unavailable |
+| `VALIDATION_ERROR` | Request validation failed (includes details array) |
+| `INTERNAL_ERROR` | Unexpected error occurred |
+
+**Request ID:**
+
+All responses (success and error) include `X-Request-ID` header. Reference this ID when reporting issues.
+
+**Example Error Response:**
+
+```bash
+curl -i https://api.example.com/admin/rules/invalid-id
+
+HTTP/1.1 404 Not Found
+X-Request-ID: 550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+{
+  "error": {
+    "code": "HTTP_404",
+    "message": "Rule invalid-id not found",
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
 }
 ```
 

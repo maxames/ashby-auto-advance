@@ -6,20 +6,19 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from structlog import get_logger
 
 from app.core.config import settings
 from app.core.database import db
-from app.models.webhooks import AshbyWebhookPayload
+from app.middleware.rate_limit import get_limiter
+from app.schemas.webhooks import AshbyWebhookPayload
 from app.utils.security import verify_ashby_signature
 
 logger = get_logger()
 router = APIRouter()
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# Get rate limiter instance
+limiter = get_limiter()
 
 
 @router.post("/webhooks/ashby")

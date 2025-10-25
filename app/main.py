@@ -5,17 +5,19 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 
 from app.api.admin import router as admin_router
 from app.api.slack_interactions import router as slack_router
-from app.api.webhooks import limiter
 from app.api.webhooks import router as webhook_router
-from app.core.config import settings
 from app.core.database import db
 from app.core.logging import logger, setup_logging
+from app.middleware import (
+    LoggingMiddleware,
+    RequestIDMiddleware,
+    setup_cors,
+    setup_exception_handlers,
+    setup_rate_limiting,
+)
 from app.services.metadata_sync import (
     sync_interview_plans,
     sync_interview_stages,
@@ -74,20 +76,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware for frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.frontend_urls,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type"],
-)
+# ============================================
+# Middleware Stack (order matters!)
+# ============================================
 
-# Add rate limiter to app state
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# 1. Request ID - First, so all other middleware can use it
+app.add_middleware(RequestIDMiddleware)
 
+# 2. Logging - Second, so it logs with request_id
+app.add_middleware(LoggingMiddleware)
+
+# 3. CORS - Third, for frontend access
+setup_cors(app)
+
+# 4. Exception handlers - Standardize error responses
+setup_exception_handlers(app)
+
+# 5. Rate limiting - Setup (returns limiter for decorator use)
+limiter = setup_rate_limiting(app)
+
+# ============================================
 # Include routers
+# ============================================
 app.include_router(webhook_router)
 app.include_router(slack_router)
 app.include_router(admin_router)

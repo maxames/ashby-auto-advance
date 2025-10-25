@@ -60,6 +60,7 @@ async def test_complete_http_advancement_flow(
     )
 
     assert response.status_code == 204
+    assert "X-Request-ID" in response.headers
 
     # Update schedule to have advancement fields
     async with clean_db.acquire() as conn:
@@ -115,6 +116,7 @@ async def test_health_check_includes_scheduler(http_client):
     response = await http_client.get("/health")
 
     assert response.status_code == 200
+    assert "X-Request-ID" in response.headers
     data = response.json()
 
     # Verify health check structure
