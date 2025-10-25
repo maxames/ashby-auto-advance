@@ -2,7 +2,7 @@
 
 > Automated candidate advancement system for Ashby ATS
 
-[![CI](https://github.com/maxames/ashby-slack-feedback/workflows/CI/badge.svg)](https://github.com/maxames/ashby-slack-feedback/actions)
+[![CI](https://github.com/maxames/ashby-auto-advance/workflows/CI/badge.svg)](https://github.com/maxames/ashby-auto-advance/actions)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -36,8 +36,8 @@ A FastAPI application that automatically advances candidates through interview s
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/maxames/ashby-slack-feedback.git
-   cd ashby-slack-feedback
+   git clone https://github.com/maxames/ashby-auto-advance.git
+   cd ashby-auto-advance
    ```
 
 2. Create virtual environment
@@ -53,7 +53,7 @@ A FastAPI application that automatically advances candidates through interview s
 
 4. Set up database
    ```bash
-   createdb ashby_feedback
+   createdb ashby_auto_advance
    psql $DATABASE_URL -f database/schema.sql
    ```
 

@@ -1,6 +1,6 @@
 # Database Setup and Migration Guide
 
-This directory contains the database schema for the Ashby Slack Feedback application.
+This directory contains the database schema for the Ashby Auto-Advance application.
 
 ## Overview
 
@@ -25,10 +25,10 @@ The database consists of 9 tables split into two logical groups:
 
 ```bash
 # 1. Create database
-createdb ashby_feedback
+createdb ashby_auto_advance
 
 # 2. Set environment variable
-export DATABASE_URL="postgresql://localhost:5432/ashby_feedback"
+export DATABASE_URL="postgresql://localhost:5432/ashby_auto_advance"
 
 # 3. Run schema
 psql $DATABASE_URL -f database/schema.sql
@@ -66,11 +66,11 @@ For running tests locally:
 
 ```bash
 # 1. Create test database
-createdb ashby_feedback_test
-# Or with full path if needed: /opt/homebrew/opt/postgresql@15/bin/createdb ashby_feedback_test
+createdb ashby_auto_advance_test
+# Or with full path if needed: /opt/homebrew/opt/postgresql@15/bin/createdb ashby_auto_advance_test
 
 # 2. Apply schema
-psql ashby_feedback_test -f database/schema.sql
+psql ashby_auto_advance_test -f database/schema.sql
 
 # 3. Copy test environment config
 cp .env.test.example .env.test
@@ -196,7 +196,7 @@ EOF
 Development only:
 ```bash
 # Drop and recreate
-dropdb ashby_feedback && createdb ashby_feedback
+dropdb ashby_auto_advance && createdb ashby_auto_advance
 
 # Run schema
 psql $DATABASE_URL -f database/schema.sql
@@ -223,8 +223,8 @@ pg_dump $DATABASE_URL --data-only > data_backup.sql
 psql $DATABASE_URL < backup_20240115_102345.sql
 
 # Drop and restore (clean slate)
-dropdb ashby_feedback
-createdb ashby_feedback
+dropdb ashby_auto_advance
+createdb ashby_auto_advance
 psql $DATABASE_URL < backup_20240115_102345.sql
 ```
 
@@ -308,7 +308,7 @@ psql $DATABASE_URL -c "SELECT * FROM schema_migrations;"
 
 To start fresh:
 ```bash
-dropdb ashby_feedback && createdb ashby_feedback
+dropdb ashby_auto_advance && createdb ashby_auto_advance
 psql $DATABASE_URL -f database/schema.sql
 ```
 
@@ -349,7 +349,7 @@ psql $DATABASE_URL -c "SELECT version();"
 Ensure your database user has necessary privileges:
 ```sql
 -- Run as superuser
-GRANT ALL PRIVILEGES ON DATABASE ashby_feedback TO your_user;
+GRANT ALL PRIVILEGES ON DATABASE ashby_auto_advance TO your_user;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO your_user;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO your_user;
 ```

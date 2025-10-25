@@ -1,1 +1,1 @@
-"""Ashby Slack Feedback Application."""
+"""Ashby Auto-Advance Application."""

@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying Ashby Slack Feedback to various platforms.
+This guide covers deploying Ashby Auto-Advance to various platforms.
 
 ## Prerequisites
 
@@ -21,8 +21,8 @@ Render provides a simple one-click deployment with automatic database setup.
 
 1. Fork/Clone Repository
    ```bash
-   git clone https://github.com/maxames/ashby-slack-feedback.git
-   cd ashby-slack-feedback
+   git clone https://github.com/maxames/ashby-auto-advance.git
+   cd ashby-auto-advance
    ```
 
 2. Create Render Account
@@ -94,7 +94,7 @@ Railway offers simple deployment with automatic HTTPS and database provisioning.
 
 2. Initialize Project
    ```bash
-   cd ashby-slack-feedback
+   cd ashby-auto-advance
    railway init
    ```
 
@@ -151,7 +151,7 @@ Fly.io provides edge deployment with automatic global distribution.
 2. Login and Launch
    ```bash
    flyctl auth login
-   cd ashby-slack-feedback
+   cd ashby-auto-advance
    flyctl launch
    ```
 
@@ -198,8 +198,8 @@ Run locally or on your own server using Docker.
 
 2. Clone Repository
    ```bash
-   git clone https://github.com/maxames/ashby-slack-feedback.git
-   cd ashby-slack-feedback
+   git clone https://github.com/maxames/ashby-auto-advance.git
+   cd ashby-auto-advance
    ```
 
 3. Configure Environment
@@ -249,20 +249,20 @@ Deploy to any Linux server with Python 3.12+.
    ```bash
    # Create database and user
    sudo -u postgres psql
-   CREATE DATABASE ashby_feedback;
+   CREATE DATABASE ashby_auto_advance;
    CREATE USER feedback_app WITH PASSWORD 'secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE ashby_feedback TO feedback_app;
+   GRANT ALL PRIVILEGES ON DATABASE ashby_auto_advance TO feedback_app;
    \q
 
    # Apply schema
-   psql postgresql://feedback_app:secure_password@localhost/ashby_feedback -f database/schema.sql
+   psql postgresql://feedback_app:secure_password@localhost/ashby_auto_advance -f database/schema.sql
    ```
 
 4. Clone and Configure
    ```bash
    cd /opt
-   git clone https://github.com/maxames/ashby-slack-feedback.git
-   cd ashby-slack-feedback
+   git clone https://github.com/maxames/ashby-auto-advance.git
+   cd ashby-auto-advance
 
    python3.12 -m venv venv
    source venv/bin/activate
@@ -274,21 +274,21 @@ Deploy to any Linux server with Python 3.12+.
 
 5. Create Systemd Service
    ```bash
-   sudo nano /etc/systemd/system/ashby-feedback.service
+   sudo nano /etc/systemd/system/ashby-auto-advance.service
    ```
 
    ```ini
    [Unit]
-   Description=Ashby Slack Feedback
+   Description=Ashby Auto-Advance
    After=network.target postgresql.service
 
    [Service]
    Type=simple
    User=www-data
-   WorkingDirectory=/opt/ashby-slack-feedback
-   Environment="PATH=/opt/ashby-slack-feedback/venv/bin"
-   EnvironmentFile=/opt/ashby-slack-feedback/.env
-   ExecStart=/opt/ashby-slack-feedback/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+   WorkingDirectory=/opt/ashby-auto-advance
+   Environment="PATH=/opt/ashby-auto-advance/venv/bin"
+   EnvironmentFile=/opt/ashby-auto-advance/.env
+   ExecStart=/opt/ashby-auto-advance/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
    Restart=always
 
    [Install]
@@ -298,14 +298,14 @@ Deploy to any Linux server with Python 3.12+.
 6. Start Service
    ```bash
    sudo systemctl daemon-reload
-   sudo systemctl enable ashby-feedback
-   sudo systemctl start ashby-feedback
-   sudo systemctl status ashby-feedback
+   sudo systemctl enable ashby-auto-advance
+   sudo systemctl start ashby-auto-advance
+   sudo systemctl status ashby-auto-advance
    ```
 
 7. Configure Nginx Reverse Proxy
    ```bash
-   sudo nano /etc/nginx/sites-available/ashby-feedback
+   sudo nano /etc/nginx/sites-available/ashby-auto-advance
    ```
 
    ```nginx
@@ -324,7 +324,7 @@ Deploy to any Linux server with Python 3.12+.
    ```
 
    ```bash
-   sudo ln -s /etc/nginx/sites-available/ashby-feedback /etc/nginx/sites-enabled/
+   sudo ln -s /etc/nginx/sites-available/ashby-auto-advance /etc/nginx/sites-enabled/
    sudo nginx -t
    sudo systemctl restart nginx
    ```
@@ -584,7 +584,7 @@ docker-compose logs -f app
 
 **Manual Deployment**:
 ```bash
-sudo journalctl -u ashby-feedback -f
+sudo journalctl -u ashby-auto-advance -f
 ```
 
 **Watch Advancement Activity**:
@@ -636,7 +636,7 @@ pip install -r requirements.txt
 **Restart Application**:
 - Render/Railway/Fly.io: Automatic on git push
 - Docker: `docker-compose restart app`
-- Manual: `sudo systemctl restart ashby-feedback`
+- Manual: `sudo systemctl restart ashby-auto-advance`
 
 ### Database Migrations
 
@@ -898,7 +898,7 @@ If you're storing 100k+ interviews, consider:
 ## Support and Resources
 
 - **Documentation**: [docs/](docs/)
-- **GitHub Issues**: [github.com/maxames/ashby-slack-feedback/issues](https://github.com/maxames/ashby-slack-feedback/issues)
+- **GitHub Issues**: [github.com/maxames/ashby-auto-advance/issues](https://github.com/maxames/ashby-auto-advance/issues)
 - **Ashby API Docs**: [developers.ashbyhq.com](https://developers.ashbyhq.com)
 - **Slack API Docs**: [api.slack.com](https://api.slack.com)
 

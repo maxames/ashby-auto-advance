@@ -991,7 +991,7 @@ For issues or questions:
    ORDER BY executed_at DESC
    LIMIT 50;
    ```
-4. **GitHub Issues**: [github.com/maxames/ashby-slack-feedback/issues](https://github.com/maxames/ashby-slack-feedback/issues)
+4. **GitHub Issues**: [github.com/maxames/ashby-auto-advance/issues](https://github.com/maxames/ashby-auto-advance/issues)
 5. **Ashby API Docs**: [developers.ashbyhq.com](https://developers.ashbyhq.com)
 
 ---

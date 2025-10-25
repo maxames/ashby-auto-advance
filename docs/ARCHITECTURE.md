@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ashby Slack Feedback is built with clean architecture principles, emphasizing separation of concerns, testability, and maintainability. The application follows a layered architecture where each layer has a single, well-defined responsibility.
+Ashby Auto-Advance is built with clean architecture principles, emphasizing separation of concerns, testability, and maintainability. The application follows a layered architecture where each layer has a single, well-defined responsibility.
 
 ## System Architecture
 
