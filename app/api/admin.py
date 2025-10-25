@@ -4,11 +4,23 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from structlog import get_logger
 
-from app.models.advancement import AdvancementRuleCreate
+from app.models.advancement import (
+    AdvancementRuleCreate,
+    AdvancementRuleResponse,
+    AdvancementStatsResponse,
+    InterviewsListResponse,
+    JobsListResponse,
+    PlansListResponse,
+    RuleCreateResponse,
+    RuleDeleteResponse,
+    RulesListResponse,
+    StagesListResponse,
+)
 from app.services import admin as admin_service
+from app.services import metadata as metadata_service
 from app.services.sync import sync_feedback_forms, sync_slack_users
 
 logger = get_logger()
@@ -39,8 +51,8 @@ async def admin_sync_slack_users() -> dict[str, str]:
     return {"status": "completed", "message": "Slack users synced"}
 
 
-@router.get("/stats")
-async def admin_stats() -> dict[str, Any]:
+@router.get("/stats", response_model=AdvancementStatsResponse)
+async def admin_stats() -> AdvancementStatsResponse:
     """
     Get advancement system statistics.
 
@@ -48,7 +60,7 @@ async def admin_stats() -> dict[str, Any]:
         Dict with advancement execution counts, pending evaluations, and recent failures
     """
     stats = await admin_service.get_advancement_statistics()
-    return stats
+    return AdvancementStatsResponse(**stats)
 
 
 @router.post("/trigger-advancement-evaluation")
@@ -96,8 +108,8 @@ async def trigger_advancement_evaluation(
         return {"error": "Must provide either schedule_id or application_id"}
 
 
-@router.post("/create-advancement-rule")
-async def create_advancement_rule(rule: AdvancementRuleCreate) -> dict[str, Any]:
+@router.post("/create-advancement-rule", response_model=RuleCreateResponse)
+async def create_advancement_rule(rule: AdvancementRuleCreate) -> RuleCreateResponse:
     """
     Create new advancement rule with requirements and actions.
 
@@ -107,7 +119,9 @@ async def create_advancement_rule(rule: AdvancementRuleCreate) -> dict[str, Any]
     Returns:
         Created rule with IDs
     """
-    logger.info("admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id)
+    logger.info(
+        "admin_creating_advancement_rule", interview_stage_id=rule.interview_stage_id
+    )
 
     # Convert Pydantic models to dicts for service layer
     requirements = [req.model_dump() for req in rule.requirements]
@@ -122,11 +136,11 @@ async def create_advancement_rule(rule: AdvancementRuleCreate) -> dict[str, Any]
         actions=actions,
     )
 
-    return {**result, "status": "created"}
+    return RuleCreateResponse(**result, status="created")
 
 
-@router.get("/rules")
-async def list_advancement_rules(active_only: bool = True) -> dict[str, Any]:
+@router.get("/rules", response_model=RulesListResponse)
+async def list_advancement_rules(active_only: bool = True) -> RulesListResponse:
     """
     List all advancement rules with their requirements and actions.
 
@@ -138,11 +152,11 @@ async def list_advancement_rules(active_only: bool = True) -> dict[str, Any]:
     """
     logger.info("admin_list_advancement_rules_triggered", active_only=active_only)
     rules = await admin_service.get_all_advancement_rules(active_only=active_only)
-    return {"count": len(rules), "rules": rules}
+    return RulesListResponse(count=len(rules), rules=rules)
 
 
-@router.get("/rules/{rule_id}")
-async def get_advancement_rule(rule_id: str) -> dict[str, Any]:
+@router.get("/rules/{rule_id}", response_model=AdvancementRuleResponse)
+async def get_advancement_rule(rule_id: str) -> AdvancementRuleResponse:
     """
     Get detailed information about a specific advancement rule.
 
@@ -155,19 +169,17 @@ async def get_advancement_rule(rule_id: str) -> dict[str, Any]:
     Raises:
         HTTPException: 404 if rule not found
     """
-    from fastapi import HTTPException
-
     logger.info("admin_get_advancement_rule_triggered", rule_id=rule_id)
     rule = await admin_service.get_advancement_rule_by_id(rule_id)
 
     if not rule:
         raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found")
 
-    return rule
+    return AdvancementRuleResponse(**rule)
 
 
-@router.delete("/rules/{rule_id}")
-async def delete_advancement_rule(rule_id: str) -> dict[str, str]:
+@router.delete("/rules/{rule_id}", response_model=RuleDeleteResponse)
+async def delete_advancement_rule(rule_id: str) -> RuleDeleteResponse:
     """
     Soft-delete an advancement rule by setting is_active=false.
 
@@ -180,12 +192,77 @@ async def delete_advancement_rule(rule_id: str) -> dict[str, str]:
     Raises:
         HTTPException: 404 if rule not found or already deleted
     """
-    from fastapi import HTTPException
-
     logger.info("admin_delete_advancement_rule_triggered", rule_id=rule_id)
     success = await admin_service.delete_advancement_rule(rule_id)
 
     if not success:
-        raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found or already deleted")
+        raise HTTPException(
+            status_code=404, detail=f"Rule {rule_id} not found or already deleted"
+        )
 
-    return {"status": "deleted", "rule_id": rule_id}
+    return RuleDeleteResponse(status="deleted", rule_id=rule_id)
+
+
+# ============================================
+# Metadata Endpoints (for UI dropdowns)
+# ============================================
+
+
+@router.get("/metadata/jobs", response_model=JobsListResponse)
+async def list_jobs(active_only: bool = True) -> JobsListResponse:
+    """
+    Get list of jobs for UI dropdowns.
+
+    Args:
+        active_only: If True, only return open jobs (default: True)
+
+    Returns:
+        List of jobs with id, title, status, etc.
+    """
+    jobs = await metadata_service.get_jobs(active_only=active_only)
+    return JobsListResponse(jobs=jobs)
+
+
+@router.get("/metadata/jobs/{job_id}/plans", response_model=PlansListResponse)
+async def get_job_plans(job_id: str) -> PlansListResponse:
+    """
+    Get interview plans for a specific job.
+
+    Args:
+        job_id: Job UUID
+
+    Returns:
+        List of plans with id, title, is_default flag
+    """
+    plans = await metadata_service.get_plans_for_job(job_id)
+    return PlansListResponse(plans=plans)
+
+
+@router.get("/metadata/plans/{plan_id}/stages", response_model=StagesListResponse)
+async def get_plan_stages(plan_id: str) -> StagesListResponse:
+    """
+    Get stages for an interview plan.
+
+    Args:
+        plan_id: Interview plan UUID
+
+    Returns:
+        List of stages with id, title, type, order
+    """
+    stages = await metadata_service.get_stages_for_plan(plan_id)
+    return StagesListResponse(stages=stages)
+
+
+@router.get("/metadata/interviews", response_model=InterviewsListResponse)
+async def list_interviews(job_id: str | None = None) -> InterviewsListResponse:
+    """
+    Get list of interviews, optionally filtered by job.
+
+    Args:
+        job_id: Optional job UUID to filter by
+
+    Returns:
+        List of interviews with id, title, job_id, feedback_form_id
+    """
+    interviews = await metadata_service.get_interviews(job_id=job_id)
+    return InterviewsListResponse(interviews=interviews)

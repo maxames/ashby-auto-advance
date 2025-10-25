@@ -8,6 +8,11 @@ from structlog import get_logger
 from app.services.advancement import process_advancement_evaluations
 from app.services.feedback_sync import sync_feedback_for_active_schedules
 from app.services.interviews import refetch_missing_advancement_fields
+from app.services.metadata_sync import (
+    sync_interview_plans,
+    sync_interview_stages,
+    sync_jobs,
+)
 from app.services.sync import sync_feedback_forms, sync_interviews, sync_slack_users
 
 logger = get_logger()
@@ -27,6 +32,9 @@ def setup_scheduler() -> None:
     - sync_feedback_forms: Every 6 hours
     - sync_interviews: Every 12 hours
     - sync_slack_users: Every 12 hours
+    - sync_jobs: Every 6 hours
+    - sync_interview_plans: Every 6 hours
+    - sync_interview_stages: Every 6 hours
 
     All jobs use coalesce=True and max_instances=1 to prevent overlaps.
     """
@@ -96,7 +104,40 @@ def setup_scheduler() -> None:
         max_instances=1,
     )
 
-    logger.info("scheduler_configured", jobs=6)
+    # Sync jobs every 6 hours
+    scheduler.add_job(
+        sync_jobs,
+        trigger="interval",
+        hours=6,
+        id="sync_jobs",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
+
+    # Sync interview plans every 6 hours
+    scheduler.add_job(
+        sync_interview_plans,
+        trigger="interval",
+        hours=6,
+        id="sync_interview_plans",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
+
+    # Sync interview stages every 6 hours
+    scheduler.add_job(
+        sync_interview_stages,
+        trigger="interval",
+        hours=6,
+        id="sync_interview_stages",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
+
+    logger.info("scheduler_configured", jobs=9)
 
 
 def start_scheduler() -> None:

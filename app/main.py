@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -12,8 +13,14 @@ from app.api.admin import router as admin_router
 from app.api.slack_interactions import router as slack_router
 from app.api.webhooks import limiter
 from app.api.webhooks import router as webhook_router
+from app.core.config import settings
 from app.core.database import db
 from app.core.logging import logger, setup_logging
+from app.services.metadata_sync import (
+    sync_interview_plans,
+    sync_interview_stages,
+    sync_jobs,
+)
 from app.services.scheduler import (
     scheduler,
     setup_scheduler,
@@ -37,6 +44,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         await sync_feedback_forms()
         await sync_interviews()
+        await sync_jobs()
+        await sync_interview_plans()
+        await sync_interview_stages()
         await sync_slack_users()
     except Exception:
         logger.exception("initial_sync_failed")
@@ -62,6 +72,15 @@ app = FastAPI(
     description="Automated candidate advancement system for Ashby ATS",
     version="2.0.0",
     lifespan=lifespan,
+)
+
+# Add CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.frontend_urls,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 # Add rate limiter to app state

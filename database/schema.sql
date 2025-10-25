@@ -297,6 +297,70 @@ CREATE INDEX IF NOT EXISTS idx_advancement_executions_application
 ON advancement_executions(application_id, executed_at DESC);
 
 -- ============================================
+-- Metadata Cache Tables (for UI)
+-- ============================================
+
+-- Jobs cache for UI dropdowns
+CREATE TABLE IF NOT EXISTS jobs (
+    job_id UUID PRIMARY KEY,
+    title TEXT NOT NULL,
+    status TEXT,
+    department_id UUID,
+    default_interview_plan_id UUID,
+    location_name TEXT,
+    employment_type TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
+    synced_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status) WHERE status = 'Open';
+
+COMMENT ON TABLE jobs IS 'Cached job data from Ashby for UI metadata';
+
+-- Interview Plans cache
+CREATE TABLE IF NOT EXISTS interview_plans (
+    interview_plan_id UUID PRIMARY KEY,
+    title TEXT NOT NULL,
+    is_archived BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
+    synced_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_interview_plans_active ON interview_plans(interview_plan_id) WHERE NOT is_archived;
+
+COMMENT ON TABLE interview_plans IS 'Cached interview plan data from Ashby for UI metadata';
+
+-- Job to Interview Plan mapping (many-to-many)
+CREATE TABLE IF NOT EXISTS job_interview_plans (
+    job_id UUID NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+    interview_plan_id UUID NOT NULL REFERENCES interview_plans(interview_plan_id) ON DELETE CASCADE,
+    is_default BOOLEAN DEFAULT false,
+    PRIMARY KEY (job_id, interview_plan_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_interview_plans_job ON job_interview_plans(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_interview_plans_plan ON job_interview_plans(interview_plan_id);
+
+COMMENT ON TABLE job_interview_plans IS 'Many-to-many relationship between jobs and interview plans';
+
+-- Interview Stages cache
+CREATE TABLE IF NOT EXISTS interview_stages (
+    interview_stage_id UUID PRIMARY KEY,
+    interview_plan_id UUID NOT NULL REFERENCES interview_plans(interview_plan_id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    type TEXT,
+    order_in_plan INTEGER NOT NULL,
+    interview_stage_group_id UUID,
+    synced_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_interview_stages_plan ON interview_stages(interview_plan_id, order_in_plan);
+
+COMMENT ON TABLE interview_stages IS 'Cached interview stages from Ashby for UI metadata';
+
+-- ============================================
 -- Migration Tracking
 -- ============================================
 

@@ -23,12 +23,20 @@ class Settings(BaseSettings):
     # Application
     log_level: str = "INFO"
 
+    # Frontend (for CORS)
+    frontend_url: str = "http://localhost:5173"
+
     # Advancement automation
     advancement_dry_run_mode: bool = False
     advancement_feedback_timeout_days: int = 7
     advancement_feedback_min_wait_minutes: int = 30
     admin_slack_channel_id: str | None = None
     default_archive_reason_id: str  # Required, not optional
+
+    @property
+    def frontend_urls(self) -> list[str]:
+        """Parse frontend URLs from comma-separated env var."""
+        return [url.strip() for url in self.frontend_url.split(",")]
 
     @field_validator("default_archive_reason_id")
     @classmethod
