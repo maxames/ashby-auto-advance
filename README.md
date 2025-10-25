@@ -132,6 +132,7 @@ All configuration is managed through environment variables. See [.env.example](.
 | `SLACK_BOT_TOKEN` | Slack bot token (xoxb-...) | Yes |
 | `SLACK_SIGNING_SECRET` | Slack signing secret for request verification | Yes |
 | `DEFAULT_ARCHIVE_REASON_ID` | Archive reason UUID from Ashby for rejections | Yes |
+| `FRONTEND_URL` | Frontend URL(s) for CORS (comma-separated) | No (default: http://localhost:5173) |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | No (default: INFO) |
 | `ADVANCEMENT_DRY_RUN_MODE` | Test mode without real advancements | No (default: false) |
 | `ADVANCEMENT_FEEDBACK_TIMEOUT_DAYS` | Days before schedule times out | No (default: 7) |
@@ -209,8 +210,7 @@ For security concerns, please see [SECURITY.md](SECURITY.md).
 The application provides several monitoring endpoints:
 
 - `GET /health` - Health check with database connectivity and connection pool stats
-- `GET /admin/stats` - System statistics (interviews, forms, users)
-- `GET /admin/advancement-stats` - Advancement-specific metrics (executions, failures, pending evaluations)
+- `GET /admin/stats` - Advancement metrics (executions, failures, pending evaluations, active rules)
 - Structured logging for observability (JSON format in production)
 
 ## Roadmap

@@ -298,11 +298,11 @@ Useful after new employees join or email addresses change.
 
 ---
 
-### Get Statistics
+### Get Advancement Statistics
 
 **`GET /admin/stats`**
 
-Retrieve application statistics.
+Retrieve advancement system statistics and execution metrics.
 
 #### Response
 
@@ -310,24 +310,22 @@ Retrieve application statistics.
 
 ```json
 {
-  "interviews": {
-    "scheduled": 42,
-    "upcoming_24h": 8,
-    "completed_7d": 156
-  },
-  "reminders": {
-    "sent_today": 23,
-    "pending": 5,
-    "submission_rate_7d": 0.89
-  },
-  "forms": {
-    "total": 3,
-    "active": 2
-  },
-  "slack_users": {
-    "total": 45,
-    "active": 43
-  }
+  "active_rules": 5,
+  "pending_evaluations": 12,
+  "total_executions_30d": 68,
+  "success_count": 42,
+  "failed_count": 3,
+  "dry_run_count": 15,
+  "rejected_count": 8,
+  "recent_failures": [
+    {
+      "execution_id": "exec-uuid",
+      "schedule_id": "schedule-uuid",
+      "application_id": "app-uuid",
+      "failure_reason": "Failed to advance candidate stage: Network error",
+      "executed_at": "2024-10-23T14:30:00Z"
+    }
+  ]
 }
 ```
 
@@ -458,9 +456,257 @@ Create a new advancement rule with requirements and actions.
 
 ---
 
+### List Jobs
+
+**`GET /admin/metadata/jobs`**
+
+Get list of jobs for UI dropdowns.
+
+#### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `active_only` | No | If true, only return open jobs (default: true) |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "jobs": [
+    {
+      "id": "job-uuid",
+      "title": "Senior Software Engineer",
+      "status": "Open",
+      "department_id": "dept-uuid",
+      "location": "San Francisco",
+      "employment_type": "FullTime"
+    }
+  ]
+}
+```
+
+---
+
+### Get Job Plans
+
+**`GET /admin/metadata/jobs/{job_id}/plans`**
+
+Get interview plans for a specific job.
+
+#### Path Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `job_id` | Yes | Job UUID |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "plans": [
+    {
+      "id": "plan-uuid",
+      "title": "Engineering Onsite",
+      "is_default": true
+    }
+  ]
+}
+```
+
+---
+
+### Get Plan Stages
+
+**`GET /admin/metadata/plans/{plan_id}/stages`**
+
+Get interview stages for an interview plan.
+
+#### Path Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `plan_id` | Yes | Interview plan UUID |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "stages": [
+    {
+      "id": "stage-uuid",
+      "title": "Technical Screen",
+      "type": "Active",
+      "order": 1
+    },
+    {
+      "id": "stage-uuid-2",
+      "title": "Onsite Interview",
+      "type": "Active",
+      "order": 2
+    }
+  ]
+}
+```
+
+---
+
+### List Interviews
+
+**`GET /admin/metadata/interviews`**
+
+Get list of interviews, optionally filtered by job.
+
+#### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `job_id` | No | Filter interviews by job UUID |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "interviews": [
+    {
+      "id": "interview-uuid",
+      "title": "Technical Screen",
+      "job_id": "job-uuid",
+      "feedback_form_id": "form-uuid"
+    }
+  ]
+}
+```
+
+---
+
+### List Advancement Rules
+
+**`GET /admin/rules`**
+
+List all advancement rules with their requirements and actions.
+
+#### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `active_only` | No | If true, only return active rules (default: true) |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "count": 2,
+  "rules": [
+    {
+      "rule_id": "rule-uuid",
+      "job_id": null,
+      "interview_plan_id": "plan-uuid",
+      "interview_stage_id": "stage-uuid",
+      "target_stage_id": null,
+      "is_active": true,
+      "created_at": "2024-10-20T14:30:00Z",
+      "updated_at": "2024-10-20T14:30:00Z",
+      "requirements": [
+        {
+          "requirement_id": "req-uuid",
+          "interview_id": "interview-uuid",
+          "score_field_path": "overall_score",
+          "operator": ">=",
+          "threshold_value": "3",
+          "is_required": true,
+          "created_at": "2024-10-20T14:30:00Z"
+        }
+      ],
+      "actions": [
+        {
+          "action_id": "action-uuid",
+          "action_type": "advance_stage",
+          "action_config": null,
+          "execution_order": 1,
+          "created_at": "2024-10-20T14:30:00Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### Get Advancement Rule
+
+**`GET /admin/rules/{rule_id}`**
+
+Get detailed information about a specific advancement rule.
+
+#### Path Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `rule_id` | Yes | Rule UUID |
+
+#### Response
+
+**200 OK**
+
+Same structure as individual rule object in list response above.
+
+**404 Not Found**
+
+```json
+{
+  "detail": "Rule {rule_id} not found"
+}
+```
+
+---
+
+### Delete Advancement Rule
+
+**`DELETE /admin/rules/{rule_id}`**
+
+Soft-delete an advancement rule by setting is_active=false.
+
+#### Path Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `rule_id` | Yes | Rule UUID to delete |
+
+#### Response
+
+**200 OK**
+
+```json
+{
+  "status": "deleted",
+  "rule_id": "rule-uuid"
+}
+```
+
+**404 Not Found**
+
+```json
+{
+  "detail": "Rule {rule_id} not found or already deleted"
+}
+```
+
+---
+
 ### Get Advancement Stats
 
-**`GET /admin/advancement-stats`**
+**`GET /admin/stats`**
 
 Get advancement execution statistics and monitoring data.
 
@@ -470,14 +716,13 @@ Get advancement execution statistics and monitoring data.
 
 ```json
 {
-  "last_7_days": {
-    "success": 42,
-    "failed": 3,
-    "dry_run": 15,
-    "rejected": 8
-  },
-  "pending_evaluations": 12,
   "active_rules": 5,
+  "pending_evaluations": 12,
+  "total_executions_30d": 68,
+  "success_count": 42,
+  "failed_count": 3,
+  "dry_run_count": 15,
+  "rejected_count": 8,
   "recent_failures": [
     {
       "execution_id": "exec-uuid",

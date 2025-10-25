@@ -82,8 +82,11 @@ Files:
 - `rules.py` - Rule matching and evaluation engine (finds rules, evaluates requirements, determines target stage)
 - `feedback_sync.py` - Polls Ashby API for feedback submissions every 30 minutes
 - `advancement.py` - Orchestrates evaluation, advancement execution, and rejection notifications
+- `admin.py` - Advancement rule management and statistics
 - `sync.py` - Data synchronization (forms, interviews, users)
-- `scheduler.py` - APScheduler configuration and job management (5 background jobs)
+- `metadata_sync.py` - Metadata synchronization (jobs, plans, stages for UI support)
+- `metadata.py` - Metadata queries for UI dropdowns
+- `scheduler.py` - APScheduler configuration and job management (9 background jobs)
 
 What it does NOT do:
 - HTTP handling
@@ -120,6 +123,7 @@ Responsibilities:
 
 Files:
 - `webhooks.py` - Ashby webhook payload models
+- `advancement.py` - Advancement rule input/response models
 
 What it does NOT do:
 - Business logic
@@ -341,17 +345,35 @@ Recruiter receives Slack DM
 **`interviews`**
 - Interview type definitions
 - Links to feedback form definitions
-- Synced from Ashby API
+- Synced from Ashby API every 12 hours
 
 **`feedback_form_definitions`**
 - Ashby feedback form schemas
-- Used to build Slack modals
-- Cached for 24 hours
+- Used to extract score fields for rules
+- Synced from Ashby API every 6 hours
 
 **`slack_users`**
 - Email → Slack user ID mapping
-- Synced hourly from Slack API
+- Synced from Slack API every 12 hours
 - Required for sending DMs
+
+**`jobs`** (v2.1)
+- Job metadata cache for UI dropdowns
+- Synced from Ashby API every 6 hours
+- Includes title, status, department, location
+
+**`interview_plans`** (v2.1)
+- Interview plan metadata cache
+- Synced from Ashby API every 6 hours
+
+**`job_interview_plans`** (v2.1)
+- Many-to-many relationship between jobs and plans
+- Tracks is_default flag
+
+**`interview_stages`** (v2.1)
+- Interview stage metadata cache
+- Synced from Ashby API every 6 hours
+- Ordered by orderInInterviewPlan
 
 ## Design Principles
 
@@ -540,12 +562,16 @@ await db.execute(
 
 ### Background Processing
 
-**APScheduler** (5 jobs):
+**APScheduler** (9 jobs):
 - Feedback sync: Every 30 minutes (polls Ashby API for new submissions)
 - Advancement evaluations: Every 30 minutes (evaluates schedules and advances candidates)
-- Form sync: Every 6 hours (API rate limit friendly)
-- Interview sync: Every 12 hours (updates interview definitions)
+- Refetch advancement fields: Every hour (backfills missing job_id/plan_id)
+- Form sync: Every 6 hours (feedback form definitions)
+- Interview sync: Every 12 hours (interview definitions)
 - Slack user sync: Every 12 hours (email to user ID mapping)
+- Jobs sync: Every 6 hours (job metadata for UI)
+- Interview plans sync: Every 6 hours (plan metadata for UI)
+- Interview stages sync: Every 6 hours (stage metadata for UI)
 
 ## Testing Strategy
 

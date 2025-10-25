@@ -528,20 +528,19 @@ This shows the full evaluation JSON including which requirements passed/failed.
 
 **Get statistics:**
 ```bash
-curl https://your-domain.com/admin/advancement-stats
+curl https://your-domain.com/admin/stats
 ```
 
 Response:
 ```json
 {
-  "last_7_days": {
-    "success": 42,
-    "failed": 3,
-    "dry_run": 15,
-    "rejected": 8
-  },
-  "pending_evaluations": 12,
   "active_rules": 5,
+  "pending_evaluations": 12,
+  "total_executions_30d": 68,
+  "success_count": 42,
+  "failed_count": 3,
+  "dry_run_count": 15,
+  "rejected_count": 8,
   "recent_failures": [...]
 }
 ```
@@ -892,7 +891,7 @@ grep "advancement_evaluations_started" app.log
 ```
 
 If missing:
-1. Check scheduler configured: Look for `scheduler_configured (jobs=5)` at startup
+1. Check scheduler configured: Look for `scheduler_configured (jobs=9)` at startup
 2. Check for scheduler errors
 3. Restart application
 

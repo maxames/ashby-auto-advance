@@ -357,6 +357,7 @@ SLACK_SIGNING_SECRET=your_signing_secret
 
 # Application
 LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR
+FRONTEND_URL=http://localhost:5173  # Frontend URL(s) for CORS (comma-separated)
 
 # Advancement System (v2.0)
 ADVANCEMENT_DRY_RUN_MODE=true  # Start in dry-run mode for testing!
@@ -489,10 +490,13 @@ Check application logs for successful startup:
 application_starting
 database_connected
 scheduler_setup
-scheduler_configured (jobs=5)
+scheduler_configured (jobs=9)
 running_initial_syncs
 sync_feedback_forms_complete
 sync_interviews_complete
+sync_jobs_complete
+sync_interview_plans_complete
+sync_interview_stages_complete
 sync_slack_users_complete
 application_ready
 ```
@@ -557,7 +561,7 @@ curl -X POST https://your-domain.com/admin/create-advancement-rule \
   }'
 
 # Check advancement stats
-curl https://your-domain.com/admin/advancement-stats
+curl https://your-domain.com/admin/stats
 
 # Query advancement tables
 psql $DATABASE_URL -c "SELECT COUNT(*) FROM advancement_rules WHERE is_active = true;"
@@ -750,7 +754,7 @@ env | grep -E 'DATABASE_URL|ASHBY|SLACK'
 curl -X POST https://your-domain.com/admin/trigger-advancement-evaluation?schedule_id=<uuid>
 
 # Check what's blocking
-curl https://your-domain.com/admin/advancement-stats
+curl https://your-domain.com/admin/stats
 ```
 
 ### Database Connection Pool Exhausted
