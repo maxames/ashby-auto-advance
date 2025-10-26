@@ -10,6 +10,7 @@ from structlog import get_logger
 from app.clients.ashby import list_interview_stages_for_plan
 from app.core.database import db
 from app.core.errors import NotFoundError
+from app.types.database import FeedbackSubmissionRecordTD
 
 logger = get_logger()
 
@@ -121,7 +122,9 @@ async def find_matching_rule(
 
 
 async def evaluate_rule_requirements(
-    rule_id: str, schedule_id: str, feedback_submissions: list[dict[str, Any]]
+    rule_id: str,
+    schedule_id: str,
+    feedback_submissions: list[FeedbackSubmissionRecordTD],
 ) -> dict[str, Any]:
     """
     Evaluate all requirements for a rule against submitted feedback.

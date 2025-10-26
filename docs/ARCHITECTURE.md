@@ -113,6 +113,26 @@ What it does NOT do:
 - HTTP handling
 - External API calls
 
+### Type System
+
+**TypedDicts (`/app/types/`)**
+
+Runtime type hints for data structures. No validation, just shape documentation:
+- Database records fetched as dicts
+- External API responses (Ashby, Slack)
+- Internal data passed between layers
+
+**Pydantic Models (`/app/schemas/`)**
+
+Request/response validation and serialization:
+- API endpoint inputs/outputs
+- OpenAPI schema generation
+- Data validation and coercion
+
+**Principle:** Don't duplicate. If Pydantic model exists for API boundary, don't create TypedDict.
+
+**Database Records:** `database.py` tracks `schema.sql` manually. Add types incrementally as needed.
+
 ### `/schemas/` - API Validation Schemas
 
 Purpose: Define data shapes and validation rules for API requests and responses

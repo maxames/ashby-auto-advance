@@ -192,6 +192,11 @@ async def get_schedules_for_application(application_id: str) -> list[dict[str, A
 
     Returns:
         List of schedule records with full details
+
+    Note:
+        Keeps dict[str, Any] return type (not InterviewScheduleRecordTD) because
+        we manually reshape with isoformat() and str() conversions - not a direct
+        record mapping.
     """
     schedules = await db.fetch(
         """

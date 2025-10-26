@@ -22,11 +22,12 @@ from app.services.rules import (
     find_matching_rule,
     get_target_stage_for_rule,
 )
+from app.types.database import FeedbackSubmissionRecordTD, InterviewScheduleRecordTD
 
 logger = get_logger()
 
 
-async def get_schedules_ready_for_evaluation() -> list[dict[str, Any]]:
+async def get_schedules_ready_for_evaluation() -> list[InterviewScheduleRecordTD]:
     """
     Get schedules that are ready for advancement evaluation.
 
@@ -67,7 +68,8 @@ async def get_schedules_ready_for_evaluation() -> list[dict[str, Any]]:
 
     logger.info("schedules_ready_for_evaluation", count=len(rows))
 
-    return [{k: v for k, v in row.items()} for row in rows]
+    # Convert asyncpg.Record to dict (TypedDict compatible)
+    return [{k: v for k, v in row.items()} for row in rows]  # type: ignore[return-value]
 
 
 async def evaluate_schedule_for_advancement(schedule_id: str) -> dict[str, Any]:
@@ -142,7 +144,10 @@ async def evaluate_schedule_for_advancement(schedule_id: str) -> dict[str, Any]:
         schedule_id,
     )
 
-    feedback_list = [{k: v for k, v in f.items()} for f in feedback_submissions]
+    feedback_list: list[FeedbackSubmissionRecordTD] = [
+        {k: v for k, v in f.items()}
+        for f in feedback_submissions  # type: ignore[misc]
+    ]
 
     # Check if any feedback exists
     if not feedback_list:
