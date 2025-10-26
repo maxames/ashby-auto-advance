@@ -71,10 +71,10 @@ class AshbyClient:
                         endpoint=endpoint,
                         errors=error_msg,
                         error_code=(
-                            error_info.get("code") if isinstance(error_info, dict) else None
+                            error_info.get("code") if isinstance(error_info, dict) else None  # type: ignore[reportUnknownMemberType]
                         ),
                         request_id=(
-                            error_info.get("requestId") if isinstance(error_info, dict) else None
+                            error_info.get("requestId") if isinstance(error_info, dict) else None  # type: ignore[reportUnknownMemberType]
                         ),
                     )
 

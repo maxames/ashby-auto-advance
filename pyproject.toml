@@ -1,6 +1,7 @@
 [tool.pyright]
 typeCheckingMode = "strict"
 stubPath = "stubs"
+pythonVersion = "3.12"
 reportMissingTypeStubs = true
 reportUnknownMemberType = true
 reportUntypedFunctionDecorator = true

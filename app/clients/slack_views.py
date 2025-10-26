@@ -34,7 +34,7 @@ def build_rejection_notification(
     Returns:
         List of Slack Block Kit blocks
     """
-    blocks = []
+    blocks: list[dict[str, Any]] = []
 
     # Header
     candidate_name = candidate_data.get("name", "Candidate")

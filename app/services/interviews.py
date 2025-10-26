@@ -10,7 +10,7 @@ from structlog import get_logger
 
 from app.core.database import db
 from app.core.errors import service_boundary
-from app.services.sync import _upsert_interview
+from app.services.sync import upsert_interview
 
 logger = get_logger()
 
@@ -225,7 +225,7 @@ async def insert_event_with_assignments(conn: Any, event: dict[str, Any], schedu
         response = await ashby_client.post("interview.info", {"id": interview_id})
 
         if response["success"]:
-            await _upsert_interview(response["results"], conn=conn)
+            await upsert_interview(response["results"], conn=conn)
             logger.info("interview_fetched_and_updated", interview_id=interview_id)
         else:
             logger.warning(

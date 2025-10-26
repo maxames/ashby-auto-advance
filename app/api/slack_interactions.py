@@ -54,7 +54,8 @@ async def handle_slack_interactions(request: Request) -> Response:
     payload_str = form_data.get("payload")
     if not payload_str or isinstance(payload_str, UploadFile):
         return Response(status_code=400)
-    payload = json.loads(payload_str)
+    # Type narrowing: payload_str is str here (UploadFile filtered above)
+    payload = json.loads(str(payload_str))
 
     # Handle button clicks
     if payload["type"] == "block_actions":

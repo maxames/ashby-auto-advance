@@ -438,7 +438,7 @@ async def process_advancement_evaluations() -> None:
                         application_id=application_id,
                         rule_id=evaluation["rule_id"],
                         target_stage_id=evaluation["target_stage_id"],
-                        from_stage_id=str(schedule["interview_stage_id"]),
+                        from_stage_id=str(schedule.get("interview_stage_id") or ""),
                         evaluation_results=evaluation["evaluation_results"],
                         dry_run=dry_run,
                     )
@@ -582,7 +582,7 @@ async def send_rejection_notification(
                 # Keep default "Position"
 
         # Build feedback summary
-        feedback_summaries = []
+        feedback_summaries: list[dict[str, Any]] = []
         for fb in feedback_data:
             feedback_summaries.append(
                 {

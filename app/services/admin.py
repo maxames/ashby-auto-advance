@@ -53,7 +53,7 @@ async def create_advancement_rule(
     )
 
     # Insert requirements
-    requirement_ids = []
+    requirement_ids: list[str] = []
     for req in requirements:
         req_id = await db.fetchval(
             """
@@ -72,7 +72,7 @@ async def create_advancement_rule(
         requirement_ids.append(str(req_id))
 
     # Insert actions
-    action_ids = []
+    action_ids: list[str] = []
     for action in actions:
         action_id = await db.fetchval(
             """
@@ -257,7 +257,7 @@ async def get_all_advancement_rules(active_only: bool = True) -> list[dict[str, 
     """
     )
 
-    result = []
+    result: list[dict[str, Any]] = []
     for rule in rules:
         rule_id = str(rule["rule_id"])
 

@@ -187,7 +187,7 @@ async def get_feedback_form_fields(form_id: str) -> list[dict[str, Any]]:
     # Parse form definition JSON (stored as text)
     form_def = json.loads(form["definition"])
 
-    fields = []
+    fields: list[dict[str, Any]] = []
     for section in form_def.get("sections", []):
         for field_wrapper in section.get("fields", []):
             field = field_wrapper.get("field", {})

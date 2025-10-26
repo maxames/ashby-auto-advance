@@ -18,7 +18,7 @@ from app.utils.time import is_stale
 logger = get_logger()
 
 
-async def _upsert_interview(
+async def upsert_interview(
     interview_data: dict[str, Any],
     conn: asyncpg.Connection | None = None,
 ) -> None:
@@ -134,7 +134,7 @@ async def sync_interviews() -> None:
             break
 
         for interview in response["results"]:
-            await _upsert_interview(interview)
+            await upsert_interview(interview)
             interviews_synced += 1
 
         if not response.get("moreDataAvailable"):
@@ -207,7 +207,7 @@ async def fetch_and_update_interview(interview_id: str) -> None:
         response = await ashby_client.post("interview.info", {"id": interview_id})
 
         if response["success"]:
-            await _upsert_interview(response["results"])
+            await upsert_interview(response["results"])
             logger.info("interview_fetched_and_updated", interview_id=interview_id)
         else:
             logger.warning(

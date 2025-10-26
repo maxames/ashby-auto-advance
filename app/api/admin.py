@@ -125,7 +125,7 @@ async def trigger_advancement_evaluation(
     elif application_id:
         schedules = await admin_service.get_schedules_for_application(application_id)
 
-        results = []
+        results: list[dict[str, Any]] = []
         for schedule in schedules:
             sid = schedule["schedule_id"]
             evaluation = await evaluate_schedule_for_advancement(sid)
@@ -183,7 +183,7 @@ async def list_advancement_rules(active_only: bool = True) -> RulesListResponse:
     """
     logger.info("admin_list_advancement_rules_triggered", active_only=active_only)
     rules = await admin_service.get_all_advancement_rules(active_only=active_only)
-    return RulesListResponse(count=len(rules), rules=rules)
+    return RulesListResponse(count=len(rules), rules=rules)  # type: ignore[arg-type]  # Dicts are structurally compatible
 
 
 @router.get("/rules/{rule_id}", response_model=AdvancementRuleResponse)
@@ -249,7 +249,7 @@ async def list_jobs(active_only: bool = True) -> JobsListResponse:
         List of jobs with id, title, status, etc.
     """
     jobs = await metadata_service.get_jobs(active_only=active_only)
-    return JobsListResponse(jobs=jobs)
+    return JobsListResponse(jobs=jobs)  # type: ignore[arg-type]  # Dicts are structurally compatible
 
 
 @router.get("/metadata/jobs/{job_id}/plans", response_model=PlansListResponse)
@@ -264,7 +264,7 @@ async def get_job_plans(job_id: str) -> PlansListResponse:
         List of plans with id, title, is_default flag
     """
     plans = await metadata_service.get_plans_for_job(job_id)
-    return PlansListResponse(plans=plans)
+    return PlansListResponse(plans=plans)  # type: ignore[arg-type]  # Dicts are structurally compatible
 
 
 @router.get("/metadata/plans/{plan_id}/stages", response_model=StagesListResponse)
@@ -279,7 +279,7 @@ async def get_plan_stages(plan_id: str) -> StagesListResponse:
         List of stages with id, title, type, order
     """
     stages = await metadata_service.get_stages_for_plan(plan_id)
-    return StagesListResponse(stages=stages)
+    return StagesListResponse(stages=stages)  # type: ignore[arg-type]  # Dicts are structurally compatible
 
 
 @router.get("/metadata/interviews", response_model=InterviewsListResponse)
@@ -294,7 +294,7 @@ async def list_interviews(job_id: str | None = None) -> InterviewsListResponse:
         List of interviews with id, title, job_id, feedback_form_id
     """
     interviews = await metadata_service.get_interviews(job_id=job_id)
-    return InterviewsListResponse(interviews=interviews)
+    return InterviewsListResponse(interviews=interviews)  # type: ignore[arg-type]  # Dicts are structurally compatible
 
 
 @router.get(
@@ -315,4 +315,4 @@ async def get_feedback_form_fields(form_id: str) -> FeedbackFormFieldsResponse:
         List of scoreable fields with paths, labels, types, and options
     """
     fields = await metadata_service.get_feedback_form_fields(form_id)
-    return FeedbackFormFieldsResponse(fields=fields)
+    return FeedbackFormFieldsResponse(fields=fields)  # type: ignore[arg-type]  # Dicts are structurally compatible

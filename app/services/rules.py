@@ -210,7 +210,7 @@ async def evaluate_rule_requirements(
         event_id = str(feedback["event_id"])
         if event_id not in feedback_by_event:
             feedback_by_event[event_id] = []
-        feedback_by_event[event_id].append(feedback)
+        feedback_by_event[event_id].append(dict(feedback))  # Cast TypedDict to dict
 
     results: list[dict[str, Any]] = []
     all_passed = True

@@ -1,5 +1,7 @@
 """FastAPI exception handlers for domain errors."""
 
+from typing import Any
+
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
@@ -48,7 +50,7 @@ async def domain_error_handler(request: Request, exc: DomainError) -> JSONRespon
     )
 
     # Build error response
-    content: dict[str, any] = {
+    content: dict[str, Any] = {
         "error": {
             "code": exc.code,
             "message": exc.message,

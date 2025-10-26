@@ -53,4 +53,4 @@ class Settings(BaseSettings):
         return v.strip()
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]  # Pydantic loads from environment variables

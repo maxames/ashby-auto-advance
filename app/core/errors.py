@@ -96,7 +96,7 @@ def service_boundary[**P, T](func: Callable[P, T]) -> Callable[P, T]:
     @wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
-            return await func(*args, **kwargs)
+            return await func(*args, **kwargs)  # type: ignore[reportUnknownVariableType,reportGeneralTypeIssues]  # Generic async call
         except DomainError:
             # Already a domain error, pass through
             raise
